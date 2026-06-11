@@ -1,0 +1,83 @@
+pkgname=firmware-xiaomi-mondrian
+pkgver=1
+pkgrel=0
+pkgdesc="Firmware for Xiaomi POCO F5 Pro / Redmi K60"
+subpackages="
+	$pkgname-adsp
+	$pkgname-cdsp
+	$pkgname-gpu
+	$pkgname-initramfs
+	$pkgname-ipa
+	$pkgname-modem
+	$pkgname-slpi
+	"
+url="https://git.mainlining.org/sm8450-mainline/firmware-xiaomi-mondrian"
+arch="aarch64"
+license="proprietary"
+options="!check !strip !archcheck !tracedeps pmb:cross-native"
+_commit="SKIP"
+source="
+	$pkgname-$_commit.tar.gz::$url/archive/$_commit.tar.gz
+	30-initramfs-firmware.files
+"
+builddir="$srcdir/$pkgname"
+
+package() {
+	mkdir -p "$pkgdir"
+}
+
+adsp() {
+	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 adsp firmware"
+
+	install -Dm644 "$builddir"/adsp* -t \
+		"$subpkgdir/lib/firmware/qcom/sm8450/mondrian"
+}
+
+cdsp() {
+	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 cdsp firmware"
+
+	install -Dm644 "$builddir"/cdsp* -t \
+		"$subpkgdir/lib/firmware/qcom/sm8450/mondrian"
+}
+
+gpu() {
+	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 gpu firmware"
+
+	install -Dm644 "$builddir"/a730* -t \
+		"$subpkgdir/lib/firmware/qcom/"
+	install -Dm644 "$builddir"/gmu_gen7* -t \
+		"$subpkgdir/lib/firmware/qcom/"
+}
+
+initramfs() {
+	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 firmware to be included in the initramfs"
+
+	install -Dm644 "$srcdir/30-initramfs-firmware.files" -t \
+		"$subpkgdir"/usr/share/mkinitfs/files
+}
+
+ipa() {
+	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 ipa firmware"
+
+	install -Dm644 "$builddir"/ipa_fws.* -t \
+		"$subpkgdir/lib/firmware/qcom/sm8450/mondrian"
+}
+
+modem() {
+	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 modem firmware"
+
+	mkdir -p "$subpkgdir/lib/firmware/qcom/sm8450/mondrian"
+	cp -r "$builddir"/modem* \
+		"$subpkgdir/lib/firmware/qcom/sm8450/mondrian"
+	find "$subpkgdir/lib/firmware/qcom/sm8450/mondrian" \
+		-type f -exec chmod 0644 {} \;
+}
+
+slpi() {
+	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 slpi firmware"
+
+	install -Dm644 "$builddir"/slpi* -t \
+		"$subpkgdir/lib/firmware/qcom/sm8450/mondrian"
+}
+
+sha512sums="SKIP"

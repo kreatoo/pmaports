@@ -1,0 +1,39 @@
+# Maintainer: Jens Reidel <adrian@travitia.xyz>
+# Reference: <https://postmarketos.org/devicepkg>
+pkgname=device-xiaomi-mondrian
+pkgdesc="Xiaomi POCO F5 Pro / Redmi K60"
+pkgver=1
+pkgrel=1
+url="https://postmarketos.org"
+license="MIT"
+arch="aarch64"
+options="!check !archcheck"
+depends="
+	linux-postmarketos-qcom-sm8450
+	make-dynpart-mappings
+	mesa-dri-gallium
+	android-tools
+	msm-firmware-loader
+	postmarketos-base
+	qbootctl
+	qbootctl-openrc
+"
+makedepends="
+	devicepkg-dev
+"
+install="$pkgname.post-install $pkgname.post-upgrade"
+source="
+	deviceinfo
+"
+
+build() {
+	devicepkg_build $startdir $pkgname
+}
+
+package() {
+	devicepkg_package $startdir $pkgname
+}
+
+sha512sums="
+5711bda3ba89926d312db5d13c76d84ad6fb4ec9e74d33e71c4d0340e97fbc5576b1f98c2b1c6e71314ecb972efcd434c700add102dfb7ae215038a2bbc198c6  deviceinfo
+"
