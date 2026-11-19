@@ -1,0 +1,11 @@
+[Unit]
+Description=Telnet recovery service for USB networking
+After=network.target
+
+[Service]
+ExecStart=/usr/sbin/telnetd -b 172.16.42.1:2222 -F -l /bin/login
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

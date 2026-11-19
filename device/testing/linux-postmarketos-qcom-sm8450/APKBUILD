@@ -2,8 +2,8 @@
 
 _flavor="postmarketos-qcom-sm8450"
 pkgname=linux-$_flavor
-pkgver=6.13.0_rc3
-pkgrel=0
+pkgver=7.2.8
+pkgrel=139
 pkgdesc="Mainline Kernel fork for SM8450 devices"
 arch="aarch64"
 _carch="arm64"
@@ -13,46 +13,67 @@ options="!strip !check !tracedeps
 	pmb:cross-native
 	pmb:kconfigcheck-nftables
 	"
-makedepends="bison findutils flex installkernel openssl-dev perl"
+makedepends="bison findutils flex installkernel kmod openssl-dev perl python3 dtc"
 
-_repo="linux"
 _config="config-$_flavor.$arch"
-_commit="13c9bbbd26d0284982c7b3c38b4611e9f836083c"
 
 # Source
-source="
-	$_repo-$_commit.tar.gz::https://github.com/kreatoo/$_repo/archive/$_commit/$_repo-$_commit.tar.gz
-	$_config
-"
+_repo="linux"
+_commit="2ebf30fe279ab3899073f1a18bce52e1314692db"
+_initramfs="initramfs.cpio.gz"
+
+source="$_repo-$_commit.tar.gz::https://github.com/kreatoo/$_repo/archive/$_commit/$_repo-$_commit.tar.gz $_config $_initramfs"
 builddir="$srcdir/$_repo-$_commit"
 
 prepare() {
 	default_prepare
-	cp "$srcdir/config-$_flavor.$arch" .config
+	cp "$startdir/$_config" "$builddir/.config"
+	cp "$startdir/$_initramfs" "$builddir/"
+	test -s "$builddir/$_initramfs"
+	# Build the relacheck host tool needed for arm64 PI code
+	gcc -o arch/arm64/kernel/pi/relacheck \
+		arch/arm64/kernel/pi/relacheck.c
 }
 
 build() {
 	unset LDFLAGS
-	make ARCH="$_carch" CC="${CC:-gcc}" \
-		KBUILD_BUILD_VERSION="$((pkgrel + 1 ))-$_flavor"
+	_make() {
+		make ARCH="$_carch" CC="${CC:-gcc}" HOSTCC="gcc" \
+			KBUILD_BUILD_VERSION="$((pkgrel + 1 ))-$_flavor" "$@"
+	}
+	# Resolve the config twice: olddefconfig can drop a symbol whose
+	# dependency only turns on in the same pass (seen with
+	# CONFIG_SND_SOC_AW88261 and CONFIG_VIDEO_IMX355).
+	_make olddefconfig
+	_make olddefconfig
+	# ABL requires the uncompressed Image (it does not support Image.gz)
+	_make -j$(nproc) dtbs
+	_make -j$(nproc) Image modules
 }
 
 package() {
+	_dtb="$builddir/arch/arm64/boot/dts/qcom/sm8475-xiaomi-mondrian.dtb"
 	mkdir -p "$pkgdir"/boot
-	make zinstall modules_install dtbs_install \
+	make install modules_install \
 		ARCH="$_carch" \
+		CC="${CC:-gcc}" HOSTCC="gcc" \
 		INSTALL_PATH="$pkgdir"/boot/ \
-		INSTALL_MOD_PATH="$pkgdir" \
-		INSTALL_MOD_STRIP=1 \
-		INSTALL_DTBS_PATH="$pkgdir"/boot/dtbs
-	rm -f "$pkgdir"/lib/modules/*/build "$pkgdir"/lib/modules/*/source
+		INSTALL_MOD_PATH="$pkgdir"/usr \
+		INSTALL_MOD_STRIP=1
+	install -D "$_dtb" \
+		"$pkgdir"/boot/dtbs/qcom/sm8475-xiaomi-mondrian.dtb
+	install -Dm644 "$builddir"/arch/arm64/boot/Image \
+		"$pkgdir"/boot/vmlinuz
+	_kernelrelease="$(make -s ARCH="$_carch" kernelrelease)"
+	depmod -b "$pkgdir"/usr "$_kernelrelease"
+	rm -f "$pkgdir"/usr/lib/modules/*/build "$pkgdir"/usr/lib/modules/*/source
 
 	install -D "$builddir"/include/config/kernel.release \
 		"$pkgdir"/usr/share/kernel/$_flavor/kernel.release
 }
 
-
 sha512sums="
-9a41570c637f2b3d836165ca9c6025e4d9fb5b89b29c233d580081e85e9e2dc70cbd11fbd5e36a9b4f801f19b7f8537fb8a2bb64f2a95c5a391124963897397b  linux-13c9bbbd26d0284982c7b3c38b4611e9f836083c.tar.gz
-333711c2244d44d64b920ce6937adb19fa4f089dafab540f97894b2514467c70c797ea8c23b87dfa6e02fca1e663879e49d2de9498f5087d523c1af9eabe9dc0  config-postmarketos-qcom-sm8450.aarch64
+7368f32fa7536441c739b188f3ded18b987fc32373f9fe4f8e0f6baabb797456a2cffe150e4d969e91782a0fdbe55dff76ca4cf63160aea6dfa1011ac8c28164  linux-2ebf30fe279ab3899073f1a18bce52e1314692db.tar.gz
+2b36b5cade65d1cb81eb3e7307b335a2f9fc56e4216e4aa9e957c807ca32265a0f95832e344570d0baf3391ff2bdc5a70459334db6cac1a8e3c5f87bf93bcc5b  config-postmarketos-qcom-sm8450.aarch64
+67ffe15e2f45cb25bb8de5632bedc6cd9b96be28044acf9c9e759adc15179393a811040a840799617834b418f4bd4d4366a21253d21adeb179a34b740319f9e6  initramfs.cpio.gz
 "

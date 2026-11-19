@@ -1,83 +1,106 @@
 pkgname=firmware-xiaomi-mondrian
 pkgver=1
-pkgrel=0
+pkgrel=20
 pkgdesc="Firmware for Xiaomi POCO F5 Pro / Redmi K60"
 subpackages="
-	$pkgname-adsp
-	$pkgname-cdsp
 	$pkgname-gpu
-	$pkgname-initramfs
-	$pkgname-ipa
-	$pkgname-modem
-	$pkgname-slpi
+	$pkgname-audio
+	$pkgname-dsp:dsp
+	$pkgname-initramfs:initramfs
+	$pkgname-tplg
 	"
-url="https://git.mainlining.org/sm8450-mainline/firmware-xiaomi-mondrian"
+url="https://postmarketos.org"
 arch="aarch64"
 license="proprietary"
-options="!check !strip !archcheck !tracedeps pmb:cross-native"
-_commit="SKIP"
+options="!check !strip !archcheck !tracedeps"
+makedepends="alsa-utils m4 mtools unzip"
+_audioreach_commit=d7a5e9d80ad18a7a6844eeb32cacbdeea0e7e677
+_audioreach_dir="audioreach-topology-$_audioreach_commit"
 source="
-	$pkgname-$_commit.tar.gz::$url/archive/$_commit.tar.gz
+	a730_zap.mbn.zst
+	aw882xx_acf.bin
 	30-initramfs-firmware.files
+	mondrian-firmware.zip::https://github.com/XiaomiFirmwareUpdaterReleases/firmware_xiaomi_mondrian/releases/download/stable-24.03.2026/fw_mondrian_mondrian_global-ota_full-OS3.0.5.0.VMNMIXM-user-15.0-15a5ad376e.zip
+	Xiaomi-Mondrian.m4
+	subgraph-device-tdm-playback.m4
+	module_tdm.m4
+	audioreach-audio-if-tokens.m4
+	$_audioreach_dir.tar.gz::https://github.com/linux-msm/audioreach-topology/archive/$_audioreach_commit.tar.gz
 "
-builddir="$srcdir/$pkgname"
+
+build() {
+	m4 -I "$srcdir" -I "$srcdir/$_audioreach_dir" "$srcdir/Xiaomi-Mondrian.m4" \
+		> "$srcdir/Xiaomi-Mondrian-tplg.conf"
+	alsatplg -c "$srcdir/Xiaomi-Mondrian-tplg.conf" \
+		-o "$srcdir/Xiaomi-Mondrian-tplg.bin"
+}
+
+prepare() {
+	unzip -p "$srcdir/mondrian-firmware.zip" firmware-update/modem.img \
+		> "$srcdir/modem.img"
+	mkdir -p "$srcdir/mondrian-adsp"
+	mcopy -i "$srcdir/modem.img" "::image/adsp.*" "$srcdir/mondrian-adsp/"
+	mcopy -i "$srcdir/modem.img" "::image/adspr.jsn" \
+		"::image/adspua.jsn" "$srcdir/mondrian-adsp/"
+}
 
 package() {
 	mkdir -p "$pkgdir"
 }
 
-adsp() {
-	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 adsp firmware"
-
-	install -Dm644 "$builddir"/adsp* -t \
-		"$subpkgdir/lib/firmware/qcom/sm8450/mondrian"
-}
-
-cdsp() {
-	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 cdsp firmware"
-
-	install -Dm644 "$builddir"/cdsp* -t \
-		"$subpkgdir/lib/firmware/qcom/sm8450/mondrian"
-}
-
 gpu() {
-	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 gpu firmware"
+	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 A730 GPU firmware"
 
-	install -Dm644 "$builddir"/a730* -t \
-		"$subpkgdir/lib/firmware/qcom/"
-	install -Dm644 "$builddir"/gmu_gen7* -t \
-		"$subpkgdir/lib/firmware/qcom/"
+	install -Dm644 "$srcdir"/a730_zap.mbn.zst \
+		"$subpkgdir/lib/firmware/qcom/sm8450/mondrian/a730_zap.mbn.zst"
+	install -Dm644 "$srcdir"/a730_zap.mbn.zst \
+		"$subpkgdir/lib/firmware/qcom/sm8475/xiaomi/mondrian/a730_zap.mbn.zst"
+}
+
+audio() {
+	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 AW88261 speaker firmware"
+
+	install -Dm644 "$srcdir"/aw882xx_acf.bin \
+		"$subpkgdir"/lib/firmware/aw882xx_acf.bin
+}
+
+dsp() {
+	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 ADSP firmware"
+
+	install -Dm644 "$srcdir"/mondrian-adsp/adsp.mdt \
+		"$subpkgdir/lib/firmware/qcom/sm8475/xiaomi/mondrian/adsp.mdt"
+	install -Dm644 "$srcdir"/mondrian-adsp/adspr.jsn \
+		"$subpkgdir/lib/firmware/qcom/sm8475/xiaomi/mondrian/adspr.jsn"
+	install -Dm644 "$srcdir"/mondrian-adsp/adspua.jsn \
+		"$subpkgdir/lib/firmware/qcom/sm8475/xiaomi/mondrian/adspua.jsn"
+	for segment in "$srcdir"/mondrian-adsp/adsp.b??; do
+		install -Dm644 "$segment" \
+			"$subpkgdir/lib/firmware/qcom/sm8475/xiaomi/mondrian/${segment##*/}"
+	done
 }
 
 initramfs() {
-	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 firmware to be included in the initramfs"
+	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 firmware for the initramfs"
 
 	install -Dm644 "$srcdir/30-initramfs-firmware.files" -t \
-		"$subpkgdir"/usr/share/mkinitfs/files
+		"$subpkgdir/usr/share/mkinitfs/files"
 }
 
-ipa() {
-	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 ipa firmware"
+tplg() {
+	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 AudioReach topology firmware"
 
-	install -Dm644 "$builddir"/ipa_fws.* -t \
-		"$subpkgdir/lib/firmware/qcom/sm8450/mondrian"
+	install -Dm644 "$srcdir/Xiaomi-Mondrian-tplg.bin" \
+		"$subpkgdir/lib/firmware/qcom/sm8450/Xiaomi-Mondrian-tplg.bin"
 }
 
-modem() {
-	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 modem firmware"
-
-	mkdir -p "$subpkgdir/lib/firmware/qcom/sm8450/mondrian"
-	cp -r "$builddir"/modem* \
-		"$subpkgdir/lib/firmware/qcom/sm8450/mondrian"
-	find "$subpkgdir/lib/firmware/qcom/sm8450/mondrian" \
-		-type f -exec chmod 0644 {} \;
-}
-
-slpi() {
-	pkgdesc="Xiaomi POCO F5 Pro / Redmi K60 slpi firmware"
-
-	install -Dm644 "$builddir"/slpi* -t \
-		"$subpkgdir/lib/firmware/qcom/sm8450/mondrian"
-}
-
-sha512sums="SKIP"
+sha512sums="
+2e736090bff681e597e1d5d922f69dadd906e30bf80b280582413c4d10606363db5f7abd47d13b46578438a05c61c36eab0497f8b5e5c3800ab5eed1b132f367  a730_zap.mbn.zst
+7df90c530ba8dd55ad2ca3741740932b0d7929bc6534a7c8a028e420ed94f2f0d61da0526907e0233fbe241aa3ad2a842976997a5fdc0f3d72f85db0d8908e13  aw882xx_acf.bin
+72404e30c87e9d1d7c78102e2d03dbd59bf0c2697955fa651aa847d90993900a1b6250d11214aa49eae0755c70a16b6c19fa4ee53d18d7bd50d249653985654c  30-initramfs-firmware.files
+a32418fe581cbf5d3baefaab7838d8301d3af43439a8aa72f746fa28c092f1760d3c705deee5d4301a88804581bb8e9408123d2280f81df5e134ba515bc6f728  mondrian-firmware.zip
+0128897097c0e458da615893edd9529a7361442fad64b3a98e08f90d8b8abafb4ec57efa79cc64f190b8adfe44ce7215ba7087f35cde686d60bd8ed933174d96  Xiaomi-Mondrian.m4
+883c30b5ac09e8f44b139d6b5fb5a438fb281c93b470c256736e0a07cbb2a5431c44dac43e7fc41ca0936081680574716695d86a5326f252a2e416dbcaba19c8  subgraph-device-tdm-playback.m4
+2f0bc755125fedf242f6e4bc3fcd7ef4bd0317b0283e5ea82ed5ca1f8e0b22fbaf84c8904918c93d44c99e9f18ab54c1c55eb64d2db16acaeb89b02f749cef3f  module_tdm.m4
+657145c4e85fcbd53fe7158d145d58005d3a206a95af9254a6f69bce45e24c81d19f96dd0428b1e7b0da19385336d444c57ed083eec0cae9872fbdc5bd596eb0  audioreach-audio-if-tokens.m4
+267b36b227ecfbfe817c83a63c2ff5ad3e2beff185f20ac0e780fd242b89611da01efe2faaab501b575bae80d800413835735eb49624181c18cbc2647ab36929  audioreach-topology-d7a5e9d80ad18a7a6844eeb32cacbdeea0e7e677.tar.gz
+"

@@ -1,2 +1,28 @@
 #!/bin/sh
-rc-update add qbootctl default
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Pin the root/boot filesystem UUIDs so boot-deploy produces vendor_boot images
+# that match the rootfs actually installed on the device.
+#
+# pmbootstrap creates a fresh ext4/ext2 image on every install, so the UUIDs in
+# /etc/fstab (and therefore the pmos_root_uuid/pmos_boot_uuid baked into
+# vendor_boot.img) change on every build. That is harmless for a full image
+# flash, but it breaks kernel-only updates: the new vendor_boot points at a
+# rootfs UUID that does not exist on the device, and the kernel panics looking
+# for it.
+#
+# Keeping these values fixed makes rebuilds reproducible and lets you flash
+# boot/vendor_boot onto an existing installation.
+set -eu
+
+ROOT_UUID="53da3333-5fc3-46b5-a023-b4b484300f30"
+BOOT_UUID="986b6221-5005-4c9d-a3f0-9f73c05a74f1"
+
+[ -f /etc/fstab ] || exit 0
+
+# Rewrite only the two mount points we own, leaving every other line alone.
+awk -v root="$ROOT_UUID" -v boot="$BOOT_UUID" '
+	$2 == "/"     { sub(/^UUID=[^ \t]+/, "UUID=" root) }
+	$2 == "/boot" { sub(/^UUID=[^ \t]+/, "UUID=" boot) }
+	{ print }
+' /etc/fstab > /etc/fstab.new && mv /etc/fstab.new /etc/fstab

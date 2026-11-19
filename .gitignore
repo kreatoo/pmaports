@@ -122,3 +122,8 @@ ENV/
 
 # child pipeline
 .ci/build-jobs.yaml
+# Mondrian build artifacts
+device/testing/device-xiaomi-mondrian/*.img
+device/testing/linux-postmarketos-qcom-sm8450/linux-local.tar.gz
+a730_zap.mbn
+**/.DS_Store

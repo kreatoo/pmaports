@@ -3,27 +3,45 @@
 pkgname=device-xiaomi-mondrian
 pkgdesc="Xiaomi POCO F5 Pro / Redmi K60"
 pkgver=1
-pkgrel=1
+pkgrel=25
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
 options="!check !archcheck"
 depends="
+	alsa-ucm-conf
 	linux-postmarketos-qcom-sm8450
-	make-dynpart-mappings
+	firmware-xiaomi-mondrian-gpu
+	firmware-xiaomi-mondrian-audio
+	firmware-xiaomi-mondrian-tplg=1-r20
 	mesa-dri-gallium
+	mkbootimg
+	linux-firmware-qcom
 	android-tools
 	msm-firmware-loader
+	rmtfs
+	qmi-utils
+	soc-qcom-modem-systemd
+	tqftpserv
 	postmarketos-base
 	qbootctl
 	qbootctl-openrc
+	busybox-extras
+	feedbackd
+	hexagonrpcd
 "
 makedepends="
 	devicepkg-dev
 "
 install="$pkgname.post-install $pkgname.post-upgrade"
 source="
+	alsa-ucm-conf/HiFi.conf
+	alsa-ucm-conf/mondrian.conf
 	deviceinfo
+	pmos-usb-telnet.service
+	mondrian-modem-firmware.service
+	hexagonrpcd-sdsp-mondrian.conf
+	iio-sensor-proxy-mondrian.conf
 "
 
 build() {
@@ -32,8 +50,34 @@ build() {
 
 package() {
 	devicepkg_package $startdir $pkgname
+	install -Dm644 "$srcdir"/mondrian.conf \
+		"$pkgdir/usr/share/alsa/ucm2/Xiaomi/mondrian/mondrian.conf"
+	install -Dm644 "$srcdir"/HiFi.conf \
+		"$pkgdir/usr/share/alsa/ucm2/Xiaomi/mondrian/HiFi.conf"
+
+	mkdir -p "$pkgdir/usr/share/alsa/ucm2/conf.d/sm8450"
+	ln -s ../../Xiaomi/mondrian/mondrian.conf \
+		"$pkgdir/usr/share/alsa/ucm2/conf.d/sm8450/Xiaomi-Mondrian.conf"
+
+	install -Dm644 "$srcdir/pmos-usb-telnet.service" "$pkgdir/usr/lib/systemd/system/pmos-usb-telnet.service"
+	install -Dm644 "$srcdir/mondrian-modem-firmware.service" \
+		"$pkgdir/usr/lib/systemd/system/mondrian-modem-firmware.service"
+	install -Dm644 "$srcdir/hexagonrpcd-sdsp-mondrian.conf" \
+		"$pkgdir/usr/lib/systemd/system/hexagonrpcd-sdsp.service.d/50-mondrian.conf"
+	install -Dm644 "$srcdir/iio-sensor-proxy-mondrian.conf" \
+		"$pkgdir/usr/lib/systemd/system/iio-sensor-proxy.service.d/50-mondrian.conf"
+	mkdir -p "$pkgdir/etc/systemd/system/multi-user.target.wants"
+	ln -s /usr/lib/systemd/system/pmos-usb-telnet.service "$pkgdir/etc/systemd/system/multi-user.target.wants/pmos-usb-telnet.service"
+	ln -s /usr/lib/systemd/system/mondrian-modem-firmware.service \
+		"$pkgdir/etc/systemd/system/multi-user.target.wants/mondrian-modem-firmware.service"
 }
 
 sha512sums="
-5711bda3ba89926d312db5d13c76d84ad6fb4ec9e74d33e71c4d0340e97fbc5576b1f98c2b1c6e71314ecb972efcd434c700add102dfb7ae215038a2bbc198c6  deviceinfo
+094c81c73a1bcddcb942631626e3042bee5d52d02e98e9a0b79fbb07a8cbbc4efe17bed306934a768f793d30f04e75787d4295880d859966f54f0ff4c58f87c5  HiFi.conf
+1d4e4edda188d0058d255e840bf50e0f2d1525aaac80c5efa16b6c387760b9fdba977ab63bbe5bd006ff233f1d54b55027b747a999567c5825db3ba917b47e8f  mondrian.conf
+c7f7bacca8ae31f6d7ab6caea086609858ab048a35ef7cf7c428f8b1439666f881d215d73a4e4df4c48d20d05e402362bc0703e4933c0a39668bf8b78945613a  deviceinfo
+16c4086522a681103a0b4d1502219314770ddb0d0e2a7255b6f771ec4d5657e19df143caa7688cff8fa97fb9e2ea6a4926bb44ca636cbed9b9cb3a633cd387ae  pmos-usb-telnet.service
+0bd1e4a6d679765e03d52209cfdf569489e93fc9aee0c7aadfe8a1bec4376114795f8a0174e93c4740b43d95c3f58a0d2a278f83ca08b558f5f740ce00b46821  mondrian-modem-firmware.service
+e8ea9f2f1e6593bb7e9dace33e8f9814b1eb94fccd7a4f239cf9813743d9dbb505cab3cfc77efe4fab87e31c373b6831f112bbaf67328f5c3cb823f432bfbd4b  hexagonrpcd-sdsp-mondrian.conf
+af66960939e6a9be4f9e39cc4e81ff6889adc0754f68ba038085dd888be46aec106f9556255794886ef469668e5bb027f63e84513746addf46a47f759024257d  iio-sensor-proxy-mondrian.conf
 "

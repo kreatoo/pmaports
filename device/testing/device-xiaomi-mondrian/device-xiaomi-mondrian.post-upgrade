@@ -1,2 +1,3 @@
 #!/bin/sh
-rc-update add qbootctl default
+
+[ -f /sbin/rc-update ] && rc-update add qbootctl default || true
