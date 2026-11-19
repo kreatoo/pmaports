@@ -1,0 +1,82 @@
+--- a/boot-deploy-functions.sh
++++ b/boot-deploy-functions.sh
+@@ -12,8 +12,13 @@
+ 	set +o posixly-correct 2>/dev/null
+ fi
+ 
+-# Source variables from os-release
+-. /usr/lib/os-release
++# Source variables from os-release (the build root used for 'abuild check'
++# may only have the /etc/os-release symlink)
++if [ -e /usr/lib/os-release ]; then
++	. /usr/lib/os-release
++elif [ -e /etc/os-release ]; then
++	. /etc/os-release
++fi
+ 
+ # Declare used deviceinfo variables to pass shellcheck (order alphabetically)
+ deviceinfo_append_dtb=""
+@@ -33,6 +38,7 @@
+ deviceinfo_bootimg_override_payload_compression=""
+ deviceinfo_bootimg_override_payload_append_dtb=""
+ deviceinfo_bootimg_override_initramfs=""
++deviceinfo_bootimg_skip_dtb=""
+ deviceinfo_cgpt_kpart=""
+ deviceinfo_create_prep_boot=""
+ deviceinfo_depthcharge_board=""
+@@ -59,6 +65,8 @@
+ deviceinfo_kernel_cmdline_append=""
+ deviceinfo_legacy_uboot_load_address=""
+ deviceinfo_legacy_uboot_image_name=""
++deviceinfo_vendor_boot_patch=""
++deviceinfo_vendor_boot_template=""
+ deviceinfo_flash_kernel_on_update=""
+ 
+ # Declare used /usr/share/boot-deploy/os-customization variables to pass shellcheck (order alphabetically)
+@@ -863,10 +871,16 @@
+ 	if [ "$deviceinfo_header_version" = "3" ] || [ "$deviceinfo_header_version" = "4" ]; then
+ 		require_package "mkbootimg" "android-tools" "generate_bootimg"
+ 
++		local _dtb_arg="--dtb $_dtb"
++		if [ "${deviceinfo_bootimg_skip_dtb}" = "true" ]; then
++			log_arrow "initramfs: not placing a dtb in $bootimg_filename"
++			_dtb_arg=""
++		fi
++
+ 		# shellcheck disable=SC2039 disable=SC2086
+ 		mkbootimg \
+ 			--header_version "${deviceinfo_header_version}" \
+-			--dtb "${_dtb}" \
++			${_dtb_arg} \
+ 			--kernel "${_kernelfile}" \
+ 			--vendor_ramdisk "$_ramdisk" \
+ 			--vendor_cmdline "$(get_cmdline)" \
+@@ -874,6 +888,28 @@
+ 			${deviceinfo_bootimg_custom_args} \
+ 			--vendor_boot "$_vendor_bootimg" \
+ 			-o "$_bootimg" || exit 1
++
++		# Some bootloaders only accept a device-specific vendor_boot payload
++		# (a concatenated FDT table, several vendor ramdisk fragments and a
++		# bootconfig) that mkbootimg cannot synthesize.  Such devices install
++		# the stock image as a template plus a helper that rewrites the kernel
++		# command line in place; everything else stays byte for byte.
++		if [ -n "${deviceinfo_vendor_boot_template}" ]; then
++			[ -f "${deviceinfo_vendor_boot_template}" ] || {
++				log "ERROR: vendor_boot template not found: ${deviceinfo_vendor_boot_template}"
++				exit 1
++			}
++			[ -x "${deviceinfo_vendor_boot_patch}" ] || {
++				log "ERROR: vendor_boot patcher missing or not executable: ${deviceinfo_vendor_boot_patch}"
++				exit 1
++			}
++			log_arrow "initramfs: using vendor_boot template ${deviceinfo_vendor_boot_template}"
++			"${deviceinfo_vendor_boot_patch}" \
++				"${deviceinfo_vendor_boot_template}" \
++				"$_vendor_bootimg.template" \
++				"$(get_cmdline)" || exit 1
++			mv -f "$_vendor_bootimg.template" "$_vendor_bootimg" || exit 1
++		fi
+ 
+ 		additional_files="$additional_files $(basename $_vendor_bootimg)"
+ 	else

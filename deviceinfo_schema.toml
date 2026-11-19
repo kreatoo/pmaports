@@ -264,6 +264,15 @@ default_value = false
 [variable.flash.bootimg_custom_args]
 description = "Additional custom arguments to pass to mkbootimg. Caution: adding contents to this variable removes the `--header-version` and `--dtb` arguments, which need to be added manually in that case"
 
+[variable.flash.bootimg_skip_dtb]
+description = "Set to `true` to omit the dtb from boot.img for header version 3/4 images, for devices whose kernel carries its own dtb and whose bootloader rejects an additional one"
+
+[variable.flash.vendor_boot_template]
+description = "Path to a vendor_boot image (optionally gzip compressed) to use instead of the one mkbootimg generates for header version 3/4. Device packages ship this when the stock bootloader only accepts the vendor's own vendor_boot payload."
+
+[variable.flash.vendor_boot_patch]
+description = "Executable called as `PATCH TEMPLATE OUT CMDLINE` that writes OUT from TEMPLATE with the generated kernel command line. Requires vendor_boot_template."
+
 [variable.flash.header_version]
 description = "Header version of boot image as defined by Android documentation."
 datatype = "integer"
