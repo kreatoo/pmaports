@@ -3,7 +3,7 @@
 maintainer="Stefan Hansson <newbyte@postmarketos.org>"
 pkgname=postmarketos-base-ui-gnome-mobile
 pkgver=1
-pkgrel=3
+pkgrel=4
 pkgdesc="Meta package for shared configuration for GNOME Mobile and Phosh UIs"
 url="https://postmarketos.org"
 # armhf: postmarketos-tweaks-setting-definitions -> phosh-mobile-settings
@@ -14,6 +14,7 @@ depends="
 	"
 source="
 	20-volume-keys-input.rules
+	50-mondrian-gnome-mobile-scaling.gschema.override
 	"
 options="!check"
 
@@ -30,8 +31,11 @@ package() {
 	mkdir -p "$pkgdir"
 	install -Dm644 "$srcdir"/20-volume-keys-input.rules \
 		"$pkgdir"/usr/lib/udev/rules.d/20-volume-keys-input.rules
+	install -Dm644 "$srcdir"/50-mondrian-gnome-mobile-scaling.gschema.override \
+		"$pkgdir"/usr/share/glib-2.0/schemas/50-mondrian-gnome-mobile-scaling.gschema.override
 }
 
 sha512sums="
 767a85bf3ad83b5edaa98add07f960bcaae9c48ee75533ae8b216aa73c453fc928ae599b2598d6c630968dd48314d3bec554c00eda57e9ae99895589430b4399  20-volume-keys-input.rules
+8e4ffc6d8d7112ee212d544682a3387ce83f9e6a5d18a49a05c3d77f53a58e0fdb7731bffa222384275a9cfe148934e1e500a0f5d215ba292ca77f140b01230c  50-mondrian-gnome-mobile-scaling.gschema.override
 "
