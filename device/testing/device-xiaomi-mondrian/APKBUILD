@@ -3,7 +3,7 @@
 pkgname=device-xiaomi-mondrian
 pkgdesc="Xiaomi POCO F5 Pro / Redmi K60"
 pkgver=1
-pkgrel=25
+pkgrel=26
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
@@ -12,6 +12,7 @@ depends="
 	alsa-ucm-conf
 	linux-postmarketos-qcom-sm8450
 	firmware-xiaomi-mondrian-gpu
+	firmware-xiaomi-mondrian-dsp
 	firmware-xiaomi-mondrian-audio
 	firmware-xiaomi-mondrian-tplg=1-r20
 	mesa-dri-gallium
