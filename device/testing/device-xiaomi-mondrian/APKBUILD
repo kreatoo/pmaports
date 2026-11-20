@@ -3,7 +3,7 @@
 pkgname=device-xiaomi-mondrian
 pkgdesc="Xiaomi POCO F5 Pro / Redmi K60"
 pkgver=1
-pkgrel=34
+pkgrel=35
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
@@ -31,6 +31,7 @@ depends="
 	busybox-extras
 	feedbackd
 	pipewire-pulse
+	pipewire-spa-bluez
 	hexagonrpcd
 "
 makedepends="
