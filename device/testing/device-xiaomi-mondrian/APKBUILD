@@ -3,7 +3,7 @@
 pkgname=device-xiaomi-mondrian
 pkgdesc="Xiaomi POCO F5 Pro / Redmi K60"
 pkgver=1
-pkgrel=33
+pkgrel=34
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
@@ -30,6 +30,7 @@ depends="
 	qbootctl-openrc
 	busybox-extras
 	feedbackd
+	pipewire-pulse
 	hexagonrpcd
 "
 makedepends="
@@ -40,6 +41,7 @@ source="
 	alsa-ucm-conf/HiFi.conf
 	alsa-ucm-conf/mondrian.conf
 	deviceinfo
+	pulseaudio-hidden.desktop
 	99-mondrian-audio.conf
 	50-mondrian-plasma-user.conf
 	pmos-usb-telnet.service
@@ -102,6 +104,7 @@ af66960939e6a9be4f9e39cc4e81ff6889adc0754f68ba038085dd888be46aec106f955625579488
 2a58c83c126ce2a65e5f9c1cf11df859659bdcd40e7ea82e2f7b4bb7f76d569d1fe9b7af180025915ddb3c388166f7cb5b20064c8ea42a25b12f8ed5d847d426  mondrian-generate-bootimg
 d96b8290f9129ba63eea984c4184f5b820b5abd134ecc8cf77c9fbcb683f3f1664c7ad13a2dee5fd258329d8f998dcaaf076e6fa8770baab3aadb031541b8a54  mondrian-patch-vendor-boot
 e7cc325b796271d56b63a864a0e3b6e9af7fbf23709f61474120b33e459e898a4c644379b7cef031c8ccc482e5f5df39a9b56398f9917e99f40b4cca6eb08fa1  vendor_boot.stock.img.gz
-c2d4054dce769b8852ff7142c1d0d7d076e63422cce383cdcb2762080dd381d5127217addd5a56fc389a4b412e16b9277babc23f27816b21039f87802ff8af78  device-xiaomi-mondrian.post-install
 fede2c9dc6256894aa29cf72ede8ba42874cf0706d81031d724ca5b43fa424d09009ec6eb685737623f3c5eadb9b095060b0ce48b7325d68d4b07225b07aa2fe  99-mondrian-audio.conf
+5728ddf9c0ac9de5f164e3d1a77ce9a8dd9a4b5bbe8e174e115e097012e6f6d39c7413f658ac7e4209ff57337348fbc5b46443bdaf0e99bf3253b1ab72386084  pulseaudio-hidden.desktop
+a3d2fe9d9573f93b66d7d8359d352a0b3f3016b2071298b9ff1f0a0921d1131fc01b22240c044b1d78e243e1feb30840119b9d4a280a64760f0b6863279417df  device-xiaomi-mondrian.post-install
 "

@@ -36,3 +36,7 @@ done
 # Enable ALSA hardware under WirePlumber for the existing phone user.
 install -Dm644 /etc/skel/.config/wireplumber/wireplumber.conf.d/99-mondrian-audio.conf \
 	/home/pmos/.config/wireplumber/wireplumber.conf.d/99-mondrian-audio.conf
+
+# Native PulseAudio is replaced by pipewire-pulse on Mondrian.
+install -Dm644 /etc/skel/.config/autostart/pulseaudio.desktop \
+	/home/pmos/.config/autostart/pulseaudio.desktop
