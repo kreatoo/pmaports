@@ -32,3 +32,7 @@ awk -v root="$ROOT_UUID" -v boot="$BOOT_UUID" '
 for group in audio input video; do
 	addgroup pmos "$group" 2>/dev/null || true
 done
+
+# Enable ALSA hardware under WirePlumber for the existing phone user.
+install -Dm644 /etc/skel/.config/wireplumber/wireplumber.conf.d/99-mondrian-audio.conf \
+	/home/pmos/.config/wireplumber/wireplumber.conf.d/99-mondrian-audio.conf
