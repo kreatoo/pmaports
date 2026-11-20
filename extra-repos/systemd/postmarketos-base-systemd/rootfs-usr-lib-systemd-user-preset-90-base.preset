@@ -3,7 +3,7 @@ enable call-audio-idle-suspend-workaround.service
 enable dbus-broker.service
 enable dbus.socket
 enable obex.service
-disable pipewire-pulse.socket
+enable pipewire-pulse.socket
 enable pipewire.socket
 enable pulseaudio.socket
 enable wireplumber.service
