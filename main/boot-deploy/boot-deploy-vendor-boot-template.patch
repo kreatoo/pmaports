@@ -16,14 +16,14 @@
  
  # Declare used deviceinfo variables to pass shellcheck (order alphabetically)
  deviceinfo_append_dtb=""
-@@ -33,6 +38,7 @@
- deviceinfo_bootimg_override_payload_compression=""
- deviceinfo_bootimg_override_payload_append_dtb=""
- deviceinfo_bootimg_override_initramfs=""
-+deviceinfo_bootimg_skip_dtb=""
- deviceinfo_cgpt_kpart=""
- deviceinfo_create_prep_boot=""
- deviceinfo_depthcharge_board=""
+@@ -21,6 +26,7 @@
+ deviceinfo_bootimg_amazon_omap_header_size=""
+ deviceinfo_bootimg_append_seandroidenforce=""
+ deviceinfo_bootimg_custom_args=""
++deviceinfo_bootimg_generator=""
+ deviceinfo_bootimg_blobpack=""
+ deviceinfo_bootimg_dtb_second=""
+ deviceinfo_bootimg_mtk_label_kernel=""
 @@ -59,6 +65,8 @@
  deviceinfo_kernel_cmdline_append=""
  deviceinfo_legacy_uboot_load_address=""
@@ -33,28 +33,62 @@
  deviceinfo_flash_kernel_on_update=""
  
  # Declare used /usr/share/boot-deploy/os-customization variables to pass shellcheck (order alphabetically)
-@@ -863,10 +871,16 @@
- 	if [ "$deviceinfo_header_version" = "3" ] || [ "$deviceinfo_header_version" = "4" ]; then
- 		require_package "mkbootimg" "android-tools" "generate_bootimg"
+@@ -692,7 +700,20 @@
+ 	local _vendor_bootimg="$work_dir/vendor_boot.img"
  
-+		local _dtb_arg="--dtb $_dtb"
-+		if [ "${deviceinfo_bootimg_skip_dtb}" = "true" ]; then
-+			log_arrow "initramfs: not placing a dtb in $bootimg_filename"
-+			_dtb_arg=""
+ 	local _mkbootimg
+-	if [ "${deviceinfo_bootimg_pxa}" = "true" ]; then
++	if [ -n "${deviceinfo_bootimg_generator}" ]; then
++		if [ "$deviceinfo_header_version" != "4" ] || [ -z "${deviceinfo_vendor_boot_template}" ]; then
++			log "ERROR: deviceinfo_bootimg_generator requires header version 4 and a vendor_boot template"
++			exit 1
 +		fi
-+
- 		# shellcheck disable=SC2039 disable=SC2086
- 		mkbootimg \
- 			--header_version "${deviceinfo_header_version}" \
++		case "$deviceinfo_bootimg_generator" in
++			/*) ;;
++			*) log "ERROR: deviceinfo_bootimg_generator must be an absolute path"; exit 1 ;;
++		esac
++		[ -f "${deviceinfo_bootimg_generator}" ] && [ -x "${deviceinfo_bootimg_generator}" ] || {
++			log "ERROR: boot image generator missing or not executable: ${deviceinfo_bootimg_generator}"
++			exit 1
++		}
++	elif [ "${deviceinfo_bootimg_pxa}" = "true" ]; then
+ 		require_package "pxa-mkbootimg" "pxa-mkbootimg" "bootimg_pxa"
+ 		_mkbootimg=pxa-mkbootimg
+ 	elif [ -n "$(command -v mkbootimg-osm0sis)" ]; then
+@@ -861,19 +882,45 @@
+ 	# A rewrite of this script and/or the deprecation of dated mkbootimg forks should be considered.
+ 	# For now we invocate modern mkbootimg differently for header version 4.
+ 	if [ "$deviceinfo_header_version" = "3" ] || [ "$deviceinfo_header_version" = "4" ]; then
+-		require_package "mkbootimg" "android-tools" "generate_bootimg"
+-
+-		# shellcheck disable=SC2039 disable=SC2086
+-		mkbootimg \
+-			--header_version "${deviceinfo_header_version}" \
 -			--dtb "${_dtb}" \
-+			${_dtb_arg} \
- 			--kernel "${_kernelfile}" \
- 			--vendor_ramdisk "$_ramdisk" \
- 			--vendor_cmdline "$(get_cmdline)" \
-@@ -874,6 +888,28 @@
- 			${deviceinfo_bootimg_custom_args} \
- 			--vendor_boot "$_vendor_bootimg" \
- 			-o "$_bootimg" || exit 1
+-			--kernel "${_kernelfile}" \
+-			--vendor_ramdisk "$_ramdisk" \
+-			--vendor_cmdline "$(get_cmdline)" \
+-			--pagesize "${deviceinfo_flash_pagesize}" \
+-			${deviceinfo_bootimg_custom_args} \
+-			--vendor_boot "$_vendor_bootimg" \
+-			-o "$_bootimg" || exit 1
++		if [ -n "${deviceinfo_bootimg_generator}" ]; then
++			"${deviceinfo_bootimg_generator}" "$_kernelfile" "$_bootimg" || exit 1
++		else
++			require_package "mkbootimg" "android-tools" "generate_bootimg"
++
++			# shellcheck disable=SC2039 disable=SC2086
++			mkbootimg \
++				--header_version "${deviceinfo_header_version}" \
++				--dtb "${_dtb}" \
++				--kernel "${_kernelfile}" \
++				--vendor_ramdisk "$_ramdisk" \
++				--vendor_cmdline "$(get_cmdline)" \
++				--pagesize "${deviceinfo_flash_pagesize}" \
++				${deviceinfo_bootimg_custom_args} \
++				--vendor_boot "$_vendor_bootimg" \
++				-o "$_bootimg" || exit 1
++		fi
 +
 +		# Some bootloaders only accept a device-specific vendor_boot payload
 +		# (a concatenated FDT table, several vendor ramdisk fragments and a

@@ -3,20 +3,21 @@
 pkgname=device-xiaomi-mondrian
 pkgdesc="Xiaomi POCO F5 Pro / Redmi K60"
 pkgver=1
-pkgrel=27
+pkgrel=28
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
 options="!check !archcheck"
 depends="
 	alsa-ucm-conf
+	boot-deploy>=0.25.0-r2
 	linux-postmarketos-qcom-sm8450
 	firmware-xiaomi-mondrian-gpu
 	firmware-xiaomi-mondrian-dsp
 	firmware-xiaomi-mondrian-audio
 	firmware-xiaomi-mondrian-tplg=1-r20
 	mesa-dri-gallium
-	mkbootimg
+	python3
 	linux-firmware-qcom
 	android-tools
 	msm-firmware-loader
@@ -43,6 +44,7 @@ source="
 	mondrian-modem-firmware.service
 	hexagonrpcd-sdsp-mondrian.conf
 	iio-sensor-proxy-mondrian.conf
+	mondrian-generate-bootimg
 	mondrian-patch-vendor-boot
 	vendor_boot.stock.img.gz
 "
@@ -74,6 +76,8 @@ package() {
 	ln -s /usr/lib/systemd/system/mondrian-modem-firmware.service \
 		"$pkgdir/etc/systemd/system/multi-user.target.wants/mondrian-modem-firmware.service"
 
+	install -Dm755 "$srcdir"/mondrian-generate-bootimg \
+		"$pkgdir/usr/bin/mondrian-generate-bootimg"
 	install -Dm755 "$srcdir"/mondrian-patch-vendor-boot \
 		"$pkgdir/usr/bin/mondrian-patch-vendor-boot"
 	install -Dm644 "$srcdir"/vendor_boot.stock.img.gz \
@@ -83,12 +87,12 @@ package() {
 sha512sums="
 094c81c73a1bcddcb942631626e3042bee5d52d02e98e9a0b79fbb07a8cbbc4efe17bed306934a768f793d30f04e75787d4295880d859966f54f0ff4c58f87c5  HiFi.conf
 1d4e4edda188d0058d255e840bf50e0f2d1525aaac80c5efa16b6c387760b9fdba977ab63bbe5bd006ff233f1d54b55027b747a999567c5825db3ba917b47e8f  mondrian.conf
-788349ecd068e0ccae8f246db123afcb833f877a53ab57f4faf07be10e01a319aafc1cbfbf5f6d7d32654dfc1c2f638c130df237f274e5449d5aa1f9bbcfdf2e  deviceinfo
+616bb05933bd259bd43865e1c689c32c9025f0257456f8f115a531afdc57636b929cdf2312e50959b89588454c5f8e4cfa28c020c206354625e91f11bb2747a6  deviceinfo
 16c4086522a681103a0b4d1502219314770ddb0d0e2a7255b6f771ec4d5657e19df143caa7688cff8fa97fb9e2ea6a4926bb44ca636cbed9b9cb3a633cd387ae  pmos-usb-telnet.service
 0bd1e4a6d679765e03d52209cfdf569489e93fc9aee0c7aadfe8a1bec4376114795f8a0174e93c4740b43d95c3f58a0d2a278f83ca08b558f5f740ce00b46821  mondrian-modem-firmware.service
 e8ea9f2f1e6593bb7e9dace33e8f9814b1eb94fccd7a4f239cf9813743d9dbb505cab3cfc77efe4fab87e31c373b6831f112bbaf67328f5c3cb823f432bfbd4b  hexagonrpcd-sdsp-mondrian.conf
 af66960939e6a9be4f9e39cc4e81ff6889adc0754f68ba038085dd888be46aec106f9556255794886ef469668e5bb027f63e84513746addf46a47f759024257d  iio-sensor-proxy-mondrian.conf
-
-8bb5a58a0ade5e09635066e4d78d1e31896b90456dcfb9919574c10827b76c76b5a329b1d74652cc6e404d86495803c0038d1175a2cbada2e3337d53c37c545b  mondrian-patch-vendor-boot
+2a58c83c126ce2a65e5f9c1cf11df859659bdcd40e7ea82e2f7b4bb7f76d569d1fe9b7af180025915ddb3c388166f7cb5b20064c8ea42a25b12f8ed5d847d426  mondrian-generate-bootimg
+d96b8290f9129ba63eea984c4184f5b820b5abd134ecc8cf77c9fbcb683f3f1664c7ad13a2dee5fd258329d8f998dcaaf076e6fa8770baab3aadb031541b8a54  mondrian-patch-vendor-boot
 e7cc325b796271d56b63a864a0e3b6e9af7fbf23709f61474120b33e459e898a4c644379b7cef031c8ccc482e5f5df39a9b56398f9917e99f40b4cca6eb08fa1  vendor_boot.stock.img.gz
 "

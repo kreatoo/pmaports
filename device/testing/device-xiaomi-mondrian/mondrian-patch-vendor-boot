@@ -8,7 +8,7 @@
 #
 # The Mondrian ABL only boots a vendor_boot whose DTB field is the original
 # concatenated FDT table and whose vendor ramdisk table holds the stock
-# "generic" and "dlkm" fragments.  mkbootimg cannot reproduce that payload, so
+# "generic" and "dlkm" fragments.  To preserve that payload,
 # boot-deploy (patched, see main/boot-deploy) calls this helper to start from
 # the stock image and rewrite nothing but the 2048 byte command line field of
 # the vendor_boot header (v4, offset 28).  Everything else is copied verbatim.

@@ -3,7 +3,7 @@
 _flavor="postmarketos-qcom-sm8450"
 pkgname=linux-$_flavor
 pkgver=7.2.8
-pkgrel=147
+pkgrel=156
 pkgdesc="Mainline Kernel fork for SM8450 devices"
 arch="aarch64"
 _carch="arm64"
@@ -19,7 +19,7 @@ _config="config-$_flavor.$arch"
 
 # Source
 _repo="linux"
-_commit="69ccc166a840c9afc8825c55e286abc718791a18"
+_commit="3497d79069c848d0ccece6d02e104de7f4640cb5"
 _initramfs="initramfs.cpio.gz"
 
 source="$_repo-$_commit.tar.gz::https://github.com/kreatoo/$_repo/archive/$_commit/$_repo-$_commit.tar.gz $_config $_initramfs"
@@ -73,7 +73,7 @@ package() {
 }
 
 sha512sums="
-5c25e968d3eb3ec68981ce3fb687ed52f7892cb5f21b6696fa8cfb98bc7b98b56a5ea9e1e18328d80f4ad62ab91923e16e936638f21aa8af065e7f371950ec3c  linux-69ccc166a840c9afc8825c55e286abc718791a18.tar.gz
+a45dd5c631d3225301d9df3258f86246eb4746bb43ae3019d36de018cb00b312a4152b0f4f260abaf5714417ca66e5b3ee80b134767f3ba8a21f22c2e7763ba8  linux-3497d79069c848d0ccece6d02e104de7f4640cb5.tar.gz
 2b36b5cade65d1cb81eb3e7307b335a2f9fc56e4216e4aa9e957c807ca32265a0f95832e344570d0baf3391ff2bdc5a70459334db6cac1a8e3c5f87bf93bcc5b  config-postmarketos-qcom-sm8450.aarch64
 67ffe15e2f45cb25bb8de5632bedc6cd9b96be28044acf9c9e759adc15179393a811040a840799617834b418f4bd4d4366a21253d21adeb179a34b740319f9e6  initramfs.cpio.gz
 "
