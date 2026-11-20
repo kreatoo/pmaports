@@ -1,0 +1,13 @@
+[Unit]
+Description=Point the modem remoteproc at the firmware exposed by msm-firmware-loader
+After=msm-firmware-loader.service
+Before=ModemManager.service
+ConditionPathExists=/sys/class/remoteproc
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'for r in /sys/class/remoteproc/remoteproc*; do [ "$(cat $r/name 2>/dev/null)" = modem ] || continue; [ "$(cat $r/state)" = offline ] || continue; echo modem.mdt > $r/firmware; echo start > $r/state; done'
+
+[Install]
+WantedBy=multi-user.target

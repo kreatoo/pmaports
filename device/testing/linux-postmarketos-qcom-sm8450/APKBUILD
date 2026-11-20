@@ -1,0 +1,79 @@
+# Maintainer: Jens Reidel <adrian@travitia.xyz>
+
+_flavor="postmarketos-qcom-sm8450"
+pkgname=linux-$_flavor
+pkgver=7.2.8
+pkgrel=158
+pkgdesc="Mainline Kernel fork for SM8450 devices"
+arch="aarch64"
+_carch="arm64"
+url="https://github.com/kreatoo/linux"
+license="GPL-2.0-only"
+options="!strip !check !tracedeps
+	pmb:cross-native
+	pmb:kconfigcheck-nftables
+	"
+makedepends="bison findutils flex installkernel kmod openssl-dev perl python3 dtc"
+
+_config="config-$_flavor.$arch"
+
+# Source
+_repo="linux"
+_commit="d375fe43b3b9c6d926ba8e5b74e6a8db202915d5"
+_initramfs="initramfs.cpio.gz"
+
+source="$_repo-$_commit.tar.gz::https://github.com/kreatoo/$_repo/archive/$_commit/$_repo-$_commit.tar.gz $_config $_initramfs"
+builddir="$srcdir/$_repo-$_commit"
+
+prepare() {
+	default_prepare
+	cp "$startdir/$_config" "$builddir/.config"
+	cp "$startdir/$_initramfs" "$builddir/"
+	test -s "$builddir/$_initramfs"
+	# Build the relacheck host tool needed for arm64 PI code
+	gcc -o arch/arm64/kernel/pi/relacheck \
+		arch/arm64/kernel/pi/relacheck.c
+}
+
+build() {
+	unset LDFLAGS
+	_make() {
+		make ARCH="$_carch" CC="${CC:-gcc}" HOSTCC="gcc" \
+			KBUILD_BUILD_VERSION="$((pkgrel + 1 ))-$_flavor" "$@"
+	}
+	# Resolve the config twice: olddefconfig can drop a symbol whose
+	# dependency only turns on in the same pass (seen with
+	# CONFIG_SND_SOC_AW88261 and CONFIG_VIDEO_IMX355).
+	_make olddefconfig
+	_make olddefconfig
+	# ABL requires the uncompressed Image (it does not support Image.gz)
+	_make -j$(nproc) dtbs
+	_make -j$(nproc) Image modules
+}
+
+package() {
+	_dtb="$builddir/arch/arm64/boot/dts/qcom/sm8475-xiaomi-mondrian.dtb"
+	mkdir -p "$pkgdir"/boot
+	make install modules_install \
+		ARCH="$_carch" \
+		CC="${CC:-gcc}" HOSTCC="gcc" \
+		INSTALL_PATH="$pkgdir"/boot/ \
+		INSTALL_MOD_PATH="$pkgdir"/usr \
+		INSTALL_MOD_STRIP=1
+	install -D "$_dtb" \
+		"$pkgdir"/boot/dtbs/qcom/sm8475-xiaomi-mondrian.dtb
+	install -Dm644 "$builddir"/arch/arm64/boot/Image \
+		"$pkgdir"/boot/vmlinuz
+	_kernelrelease="$(make -s ARCH="$_carch" kernelrelease)"
+	depmod -b "$pkgdir"/usr "$_kernelrelease"
+	rm -f "$pkgdir"/usr/lib/modules/*/build "$pkgdir"/usr/lib/modules/*/source
+
+	install -D "$builddir"/include/config/kernel.release \
+		"$pkgdir"/usr/share/kernel/$_flavor/kernel.release
+}
+
+sha512sums="
+82969a87e0a52968a60ba86f3c074ec85213fcad815e56f33e272b2200da8c2126a0a23d263ce6ff70cefb5dcde8180803b7bb44465ebf864b386fc0c9c0c631  linux-d375fe43b3b9c6d926ba8e5b74e6a8db202915d5.tar.gz
+2b36b5cade65d1cb81eb3e7307b335a2f9fc56e4216e4aa9e957c807ca32265a0f95832e344570d0baf3391ff2bdc5a70459334db6cac1a8e3c5f87bf93bcc5b  config-postmarketos-qcom-sm8450.aarch64
+67ffe15e2f45cb25bb8de5632bedc6cd9b96be28044acf9c9e759adc15179393a811040a840799617834b418f4bd4d4366a21253d21adeb179a34b740319f9e6  initramfs.cpio.gz
+"

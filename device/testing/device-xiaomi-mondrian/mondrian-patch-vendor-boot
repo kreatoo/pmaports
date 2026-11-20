@@ -1,0 +1,80 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# mondrian-patch-vendor-boot - install the stock Xiaomi Mondrian vendor_boot
+# payload with the postmarketOS kernel command line.
+#
+# Usage: mondrian-patch-vendor-boot TEMPLATE OUT "EXTRA CMDLINE"
+#
+# The Mondrian ABL only boots a vendor_boot whose DTB field is the original
+# concatenated FDT table and whose vendor ramdisk table holds the stock
+# "generic" and "dlkm" fragments.  To preserve that payload,
+# boot-deploy (patched, see main/boot-deploy) calls this helper to start from
+# the stock image and rewrite nothing but the 2048 byte command line field of
+# the vendor_boot header (v4, offset 28).  Everything else is copied verbatim.
+#
+# The template may be gzip compressed.  Tokens already present in the template
+# (disable_dma32=on, mtdoops.fingerprint=..., bootconfig) are load bearing and
+# are kept; stale pmos_* / PMOS_* tokens are dropped so repeated runs are
+# idempotent.
+
+set -eu
+
+CMDLINE_OFF=28
+CMDLINE_LEN=2048
+
+usage() {
+	echo "usage: $0 TEMPLATE OUT CMDLINE" >&2
+	exit 2
+}
+
+[ $# -eq 3 ] || usage
+src=$1
+dst=$2
+extra=$3
+
+[ -f "$src" ] || {
+	echo "ERROR: $src: no such file" >&2
+	exit 1
+}
+
+tmpdir=$(mktemp -d)
+trap 'rm -rf "$tmpdir"' EXIT
+
+# Accept a gzip compressed template as well (saves ~55 MB in the package).
+if gzip -dc "$src" > "$tmpdir/template" 2>/dev/null && [ -s "$tmpdir/template" ]; then
+	src="$tmpdir/template"
+fi
+
+[ "$(dd if="$src" bs=1 count=8 2>/dev/null)" = "VNDRBOOT" ] || {
+	echo "ERROR: $src: not a vendor_boot image" >&2
+	exit 1
+}
+
+old=$(dd if="$src" bs=1 skip=$CMDLINE_OFF count=$CMDLINE_LEN 2>/dev/null | tr -d '\000')
+
+stock=
+for token in $old; do
+	case $token in
+	pmos_*|PMOS_*)
+		# From an earlier run, the new command line replaces it.
+		;;
+	*)
+		stock="$stock $token"
+		;;
+	esac
+done
+
+new="$stock $extra"
+new=${new# }
+
+if [ ${#new} -gt $((CMDLINE_LEN - 1)) ]; then
+	echo "ERROR: vendor_boot command line too long: ${#new} > $((CMDLINE_LEN - 1)) bytes" >&2
+	exit 1
+fi
+
+cp "$src" "$dst"
+dd if=/dev/zero of="$dst" bs=1 seek=$CMDLINE_OFF count=$CMDLINE_LEN conv=notrunc 2>/dev/null
+printf '%s' "$new" | dd of="$dst" bs=1 seek=$CMDLINE_OFF conv=notrunc 2>/dev/null
+
+echo "vendor_boot: command line '$new'"
