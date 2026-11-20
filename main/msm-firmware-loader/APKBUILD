@@ -1,7 +1,7 @@
 maintainer="Stefan Hansson <newbyte@postmarketos.org>"
 pkgname=msm-firmware-loader
 pkgver=1.9.0
-pkgrel=1
+pkgrel=2
 pkgdesc="Set of init services to automatically load firmware from device partitions"
 url="https://postmarketos.org/"
 subpackages="
@@ -25,6 +25,8 @@ install="$pkgname-openrc.post-install"
 options="!check"
 
 package() {
+	sed -i 's|/usr/sbin/msm-firmware-loader|/usr/bin/msm-firmware-loader|g' \
+		msm-firmware-loader.service msm-firmware-loader-unpack.service
 	install -Dm755 msm-firmware-loader.sh \
 		"$pkgdir/usr/bin/msm-firmware-loader.sh"
 	install -Dm755 msm-firmware-loader-unpack.sh \
