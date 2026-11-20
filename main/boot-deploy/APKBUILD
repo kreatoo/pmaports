@@ -13,6 +13,8 @@ source="
 	boot-deploy-vendor-boot-template.patch
 	"
 depends="generate-kernel-cmdline"
+# needed for /usr/lib/os-release
+checkdepends="postmarketos-release"
 
 prepare() {
 	default_prepare

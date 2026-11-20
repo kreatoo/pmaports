@@ -1,23 +1,24 @@
 # Reference: <https://postmarketos.org/devicepkg>
-# Co-Maintainer: Joel Selvaraj <foss@joelselvaraj.com>
-# Co-Maintainer: Casey Connolly <kcxt@postmarketos.org>
-maintainer="Victoria Brekenfeld <postmarketos@drakulix.de>"
+# Co-Maintainer: Victoria Brekenfeld <postmarketos@drakulix.de>
+maintainer="Robert Eckelmann <longnoserob@postmarketos.org>"
 pkgname=device-google-blueline
 pkgdesc="Google Pixel 3"
-pkgver=7
+pkgver=8
 pkgrel=0
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
 options="!check !archcheck"
 depends="
-	linux-postmarketos-qcom-sdm845
-	mkbootimg
+	alsa-ucm-conf-sdm845
 	firmware-google-blueline
 	firmware-google-blueline-dtbo
+	hexagonrpcd
+	linux-postmarketos-qcom-sdm845
+	mkbootimg
 	postmarketos-base
-	alsa-ucm-conf-sdm845
 	soc-qcom
+	soc-qcom-modem
 	soc-qcom-qbootctl
 	unl0kr-fbforcerefresh
 "

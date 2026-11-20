@@ -16,6 +16,8 @@ variables:
   # seems like a reasonable balance. If this is too low, git merge-base (from ci/
   # common.py) can fail
   GIT_DEPTH: 100
+  # Needed by ci-common for the pmaports codepath.
+  PMB_CHANNELS_CFG: "/tmp/ci-common/channels.cfg"
   # So that anything that runs install_pmbootstrap and tries to import pmb module
   # can find it.
   PYTHONPATH: "/tmp/pmbootstrap"
@@ -29,10 +31,6 @@ workflow:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     # Run scheduled pipeline for autoupdate or manually triggered pipeline
     - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web"
-
-# Some packages have their own yaml files defining tests. All of these should contain
-# only jobs which extend the .package-test job!
-include: "**/.gitlab-ci.yml"
 
 # device documentation
 wiki:
@@ -149,10 +147,25 @@ kernel-kconfig:
       allow_failure: true
     - if: *mr_rule
       changes:
-        - device/*/linux-*/config-*
+        - device/*/linux-*/APKBUILD
   script:
     - .ci/lib/gitlab_prepare_ci.sh
     - .ci/kconfig.sh
+
+# validate generic kernel kconfig
+generate-all-kconfigs:
+  stage: lint
+  rules:
+    - if: *mr_rule
+      changes:
+      - kconfig-generic.toml
+      - kconfigcheck.toml
+  script:
+    - .ci/check-generic-kconfig.sh
+  artifacts:
+    when: always
+    paths:
+      - kconfig-*.log
 
 # Verify checksums
 verify-checksums:
@@ -172,7 +185,7 @@ mr-settings:
   before_script:
     - apk -q add python3
   script:
-    - wget -q "https://gitlab.postmarketos.org/postmarketOS/ci-common/-/raw/main/check_mr_settings.py"
+    - wget -q "https://gitlab.nura.eco/nura/ci-common/-/raw/main/check_mr_settings.py"
     - python3 ./check_mr_settings.py
 
 pmbootstrap minimum version:
@@ -203,7 +216,7 @@ generate-build-jobs:
     - .ci/lib/gitlab_prepare_ci.sh
   needs: []
   script:
-    - wget "https://gitlab.postmarketos.org/postmarketOS/ci-common/-/raw/main/install_pmbootstrap.sh"
+    - wget "https://gitlab.nura.eco/nura/ci-common/-/raw/main/install_pmbootstrap.sh"
     - sh ./install_pmbootstrap.sh py3-jinja2
 
     # HACK: Make the pmb library happy to use the currently-cloned pmaports repo
@@ -246,10 +259,10 @@ build-docs:
 deploy-docs:
   stage: deploy
   trigger:
-    project: postmarketOS/docs.postmarketos.org
+    project: nura/docs.nura.eco
     strategy: depend
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PROJECT_NAMESPACE == "postmarketOS"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PROJECT_NAMESPACE == "nura"
       changes:
         - deviceinfo_schema.toml
         - docs/**
@@ -275,10 +288,24 @@ auto-update:
       - log_testsuite_pmaports.txt
       - pmbootstrap.cfg
 
-# Template for package test jobs defined per-package
-.package-test:
+cross-gcc-tests:
   stage: test
+  tags: [qemu]
+  before_script:
+    - wget "https://gitlab.nura.eco/nura/ci-common/-/raw/main/install_pmbootstrap.sh"
+    - sh ./install_pmbootstrap.sh
+  script:
+    - su pmos -c "pmbootstrap build gcc-aarch64"
+    - su pmos -c "pmbootstrap build --arch=aarch64 hello-world --force"
+    - su pmos -c "pmbootstrap build --arch=aarch64 buffybox --force"
+    - su pmos -c "pmbootstrap build --arch=aarch64 mkbootimg-osm0sis --force"
+    - su pmos -c "pmbootstrap build --arch=aarch64 gcc-x86_64"
   rules:
     - if: *mr_rule
-  before_script:
-    - .ci/lib/gitlab_prepare_ci.sh
+      changes:
+        - cross/gcc-x86_64/APKBUILD
+  artifacts:
+    when: always
+    paths:
+      - log.txt
+    expire_in: 1 week

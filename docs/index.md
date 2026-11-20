@@ -1,7 +1,6 @@
 # Welcome to pmaports' documentation!
 
-pmaports is the repository that holds the package build definitions in
-postmarketOS.
+pmaports is the repository that holds the package build definitions in Nura.
 
 When porting a new device or doing maintenance work around the distribution,
 you will usually be working inside of pmaports.
@@ -14,18 +13,7 @@ in pmaports and the processes around device categorization.
    :hidden:
 
    releases
-   approval-rules
-   device-categorization
-   deviceinfo-reference
-   ci-tags
-   firmware
-   generic-device-packages
-   generic-kernels
-   hardware-ci
-   kconfig-fragments
-   kconfigcheck
-   kernel-cmdline
-   kernel-versions
-   packaging-guidelines
-   ui-packages
+   merge-requests
+   ci
+   packaging
 ```

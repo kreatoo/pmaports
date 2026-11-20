@@ -26,3 +26,13 @@ awk -v root="$ROOT_UUID" -v boot="$BOOT_UUID" '
 	$2 == "/boot" { sub(/^UUID=[^ \t]+/, "UUID=" boot) }
 	{ print }
 ' /etc/fstab > /etc/fstab.new && mv /etc/fstab.new /etc/fstab
+
+# The phone user needs ALSA/input/video device access. Some systemd-based
+# base images do not add pmos to these groups automatically.
+for group in audio input video; do
+	addgroup pmos "$group" 2>/dev/null || true
+done
+
+# Enable ALSA hardware under WirePlumber for the existing phone user.
+install -Dm644 /etc/skel/.config/wireplumber/wireplumber.conf.d/99-mondrian-audio.conf \
+	/home/pmos/.config/wireplumber/wireplumber.conf.d/99-mondrian-audio.conf

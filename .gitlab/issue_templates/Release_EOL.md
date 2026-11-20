@@ -1,5 +1,5 @@
 <!--
-    This template is for marking a postmarketOS stable release as EOL.
+    This template is for marking a Nura stable release as EOL.
 
     Name this issue "vYY.MM EOL".
 -->
@@ -12,9 +12,9 @@ When the release has reached its EOL date:
   - [ ] push it to the branch
   - [ ] make sure bpo built and released the updated packages
 - [ ] drop the old release from
-  [monitoring](https://gitlab.postmarketos.org/postmarketOS/monitoring)
+  [monitoring](https://gitlab.nura.eco/nura/monitoring)
 - [ ] drop the "oldold -> old" release check from
-  [postmarketos-release-upgrade](https://gitlab.postmarketos.org/postmarketOS/postmarketos-release-upgrade/)
+  [postmarketos-release-upgrade](https://gitlab.nura.eco/nura/postmarketos-release-upgrade/)
   CI
 - [ ] bpo: configure images so they don't get built for the old release anymore
 - [ ] bpo: configure branches so we don't try to build packages for old
@@ -23,7 +23,7 @@ When the release has reached its EOL date:
     the amount of branches that get checked minimal
 - [ ] pmaports.git channels.cfg: change description:
   - "Old release (unsupported)"
-- [ ] Update the [Releases](https://docs.postmarketos.org/pmaports/main/releases.html) page
+- [ ] Update the [Releases](https://docs.nura.eco/pmaports/main/releases.html) page
   - Move the release from active to old
 - [ ] Consider removing images for the previous releases to save disk space
   (people can build their own images with pmbootstrap if needed)

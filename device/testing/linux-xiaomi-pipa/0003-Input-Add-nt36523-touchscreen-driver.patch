@@ -1,18 +1,18 @@
-From 269b0a4050e2aff1b3e2caad2a5487fa47efcd91 Mon Sep 17 00:00:00 2001
+From 918332c966bc6f9e66fbef52b6f3e9d04603c8ae Mon Sep 17 00:00:00 2001
 From: Jianhua Lu <lujianhua000@gmail.com>
 Date: Thu, 4 Aug 2022 13:26:26 +0800
-Subject: [PATCH 03/12] Input: Add nt36523 touchscreen driver
+Subject: [PATCH] Input: Add nt36523 touchscreen driver
 
 ---
  drivers/input/touchscreen/Kconfig             |    2 +
  drivers/input/touchscreen/Makefile            |    1 +
  drivers/input/touchscreen/nt36523/Kconfig     |   11 +
  drivers/input/touchscreen/nt36523/Makefile    |    8 +
- drivers/input/touchscreen/nt36523/nt36xxx.c   | 1933 +++++++++++++++++
- drivers/input/touchscreen/nt36523/nt36xxx.h   |  264 +++
+ drivers/input/touchscreen/nt36523/nt36xxx.c   | 1980 +++++++++++++++++
+ drivers/input/touchscreen/nt36523/nt36xxx.h   |  267 +++
  .../touchscreen/nt36523/nt36xxx_fw_update.c   |  902 ++++++++
  .../touchscreen/nt36523/nt36xxx_mem_map.h     |  656 ++++++
- 8 files changed, 3777 insertions(+)
+ 8 files changed, 3827 insertions(+)
  create mode 100644 drivers/input/touchscreen/nt36523/Kconfig
  create mode 100644 drivers/input/touchscreen/nt36523/Makefile
  create mode 100644 drivers/input/touchscreen/nt36523/nt36xxx.c
@@ -21,7 +21,7 @@ Subject: [PATCH 03/12] Input: Add nt36523 touchscreen driver
  create mode 100644 drivers/input/touchscreen/nt36523/nt36xxx_mem_map.h
 
 diff --git a/drivers/input/touchscreen/Kconfig b/drivers/input/touchscreen/Kconfig
-index 7d5b72ee07fa..b1a31da786f8 100644
+index 9b9ae8ac3f7f..5c3415aafa40 100644
 --- a/drivers/input/touchscreen/Kconfig
 +++ b/drivers/input/touchscreen/Kconfig
 @@ -12,6 +12,8 @@ menuconfig INPUT_TOUCHSCREEN
@@ -34,10 +34,10 @@ index 7d5b72ee07fa..b1a31da786f8 100644
  	tristate "Marvell 88PM860x touchscreen"
  	depends on MFD_88PM860X
 diff --git a/drivers/input/touchscreen/Makefile b/drivers/input/touchscreen/Makefile
-index ab9abd151078..acb41060482c 100644
+index bfd9de83389d..c6ce251231e0 100644
 --- a/drivers/input/touchscreen/Makefile
 +++ b/drivers/input/touchscreen/Makefile
-@@ -120,3 +120,4 @@ obj-$(CONFIG_TOUCHSCREEN_IQS5XX)	+= iqs5xx.o
+@@ -119,3 +119,4 @@ obj-$(CONFIG_TOUCHSCREEN_IQS5XX)	+= iqs5xx.o
  obj-$(CONFIG_TOUCHSCREEN_IQS7211)	+= iqs7211.o
  obj-$(CONFIG_TOUCHSCREEN_ZINITIX)	+= zinitix.o
  obj-$(CONFIG_TOUCHSCREEN_HIMAX_HX83112B)	+= himax_hx83112b.o
@@ -75,10 +75,10 @@ index 000000000000..d16afc8f127f
 +	nt36xxx_fw_update.o
 diff --git a/drivers/input/touchscreen/nt36523/nt36xxx.c b/drivers/input/touchscreen/nt36523/nt36xxx.c
 new file mode 100644
-index 000000000000..83eddb597544
+index 000000000000..45f5e3dc3671
 --- /dev/null
 +++ b/drivers/input/touchscreen/nt36523/nt36xxx.c
-@@ -0,0 +1,1933 @@
+@@ -0,0 +1,1980 @@
 +/*
 + * Copyright (C) 2010 - 2018 Novatek, Inc.
 + * Copyright (C) 2021 XiaoMi, Inc.
@@ -102,13 +102,17 @@ index 000000000000..83eddb597544
 +#include <linux/interrupt.h>
 +#include <linux/irq.h>
 +#include <linux/gpio.h>
++#include <linux/gpio/consumer.h>
 +#include <linux/proc_fs.h>
 +#include <linux/input/mt.h>
 +#include <linux/debugfs.h>
-+#include <linux/of_gpio.h>
++#include <linux/notifier.h>
 +#include <linux/of_irq.h>
 +
 +#include "nt36xxx.h"
++
++extern int pen_charge_state_notifier_register_client(struct notifier_block *nb);
++extern int pen_charge_state_notifier_unregister_client(struct notifier_block *nb);
 +
 +#if NVT_TOUCH_ESD_PROTECT
 +#include <linux/jiffies.h>
@@ -702,8 +706,9 @@ index 000000000000..83eddb597544
 +
 +static void release_pen_event(void) {
 +	if (ts && ts->pen_input_dev) {
-+		input_report_abs(ts->pen_input_dev, ABS_X, 0);
-+		input_report_abs(ts->pen_input_dev, ABS_Y, 0);
++		/* Don't touch ABS_X/ABS_Y here: moving the tool to (0,0) right
++		 * before the proximity-out parks the pen cursor in the top
++		 * left corner of the screen. */
 +		input_report_abs(ts->pen_input_dev, ABS_PRESSURE, 0);
 +		input_report_abs(ts->pen_input_dev, ABS_TILT_X, 0);
 +		input_report_abs(ts->pen_input_dev, ABS_TILT_Y, 0);
@@ -730,10 +735,20 @@ index 000000000000..83eddb597544
 +	int32_t ret = 0;
 +
 +#if NVT_TOUCH_SUPPORT_HW_RST
-+	ts->reset_gpio = of_get_named_gpio_flags(np, "novatek,reset-gpio", 0, &ts->reset_flags);
++	ts->reset_gpiod = devm_gpiod_get(dev, "novatek,reset", GPIOD_ASIS);
++	if (IS_ERR(ts->reset_gpiod))
++		return dev_err_probe(dev, PTR_ERR(ts->reset_gpiod),
++				     "failed to get reset GPIO\n");
++
++	ts->reset_gpio = desc_to_gpio(ts->reset_gpiod);
 +	NVT_LOG("novatek,reset-gpio=%d\n", ts->reset_gpio);
 +#endif
-+	ts->irq_gpio = of_get_named_gpio(np, "novatek,irq-gpio", 0);
++	ts->irq_gpiod = devm_gpiod_get(dev, "novatek,irq", GPIOD_ASIS);
++	if (IS_ERR(ts->irq_gpiod))
++		return dev_err_probe(dev, PTR_ERR(ts->irq_gpiod),
++				     "failed to get irq GPIO\n");
++
++	ts->irq_gpio = desc_to_gpio(ts->irq_gpiod);
 +	NVT_LOG("novatek,irq-gpio=%d\n", ts->irq_gpio);
 +
 +	ts->pen_support = of_property_read_bool(np, "novatek,pen-support");
@@ -817,21 +832,21 @@ index 000000000000..83eddb597544
 +	int32_t ret = 0;
 +
 +#if NVT_TOUCH_SUPPORT_HW_RST
-+	/* request RST-pin (Output/High) */
-+	if (gpio_is_valid(ts->reset_gpio)) {
-+		ret = gpio_request_one(ts->reset_gpio, GPIOF_OUT_INIT_LOW, "NVT-tp-rst");
++	/* configure RST-pin (Output/Low) */
++	if (ts->reset_gpiod) {
++		ret = gpiod_direction_output(ts->reset_gpiod, 0);
 +		if (ret) {
-+			NVT_ERR("Failed to request NVT-tp-rst GPIO\n");
++			NVT_ERR("Failed to configure NVT-tp-rst GPIO\n");
 +			goto err_request_reset_gpio;
 +		}
 +	}
 +#endif
 +
-+	/* request INT-pin (Input) */
-+	if (gpio_is_valid(ts->irq_gpio)) {
-+		ret = gpio_request_one(ts->irq_gpio, GPIOF_IN, "NVT-int");
++	/* configure INT-pin (Input) */
++	if (ts->irq_gpiod) {
++		ret = gpiod_direction_input(ts->irq_gpiod);
 +		if (ret) {
-+			NVT_ERR("Failed to request NVT-int GPIO\n");
++			NVT_ERR("Failed to configure NVT-int GPIO\n");
 +			goto err_request_irq_gpio;
 +		}
 +	}
@@ -839,10 +854,7 @@ index 000000000000..83eddb597544
 +	return ret;
 +
 +err_request_irq_gpio:
-+#if NVT_TOUCH_SUPPORT_HW_RST
-+	gpio_free(ts->reset_gpio);
 +err_request_reset_gpio:
-+#endif
 +	return ret;
 +}
 +
@@ -855,12 +867,6 @@ index 000000000000..83eddb597544
 +*******************************************************/
 +static void nvt_gpio_deconfig(struct nvt_ts_data *ts)
 +{
-+	if (gpio_is_valid(ts->irq_gpio))
-+		gpio_free(ts->irq_gpio);
-+#if NVT_TOUCH_SUPPORT_HW_RST
-+	if (gpio_is_valid(ts->reset_gpio))
-+		gpio_free(ts->reset_gpio);
-+#endif
 +}
 +
 +static uint8_t nvt_fw_recovery(uint8_t *point_data)
@@ -1123,8 +1129,10 @@ index 000000000000..83eddb597544
 +//				printk("x=%d,y=%d,p=%d,tx=%d,ty=%d,d=%d,b1=%d,b2=%d,bat=%d\n", pen_x, pen_y, pen_pressure,
 +//						pen_tilt_x, pen_tilt_y, pen_distance, pen_btn1, pen_btn2, pen_battery);
 +
-+				input_report_abs(ts->pen_input_dev, ABS_X, pen_x);
-+				input_report_abs(ts->pen_input_dev, ABS_Y, pen_y);
++				if (pen_distance || pen_pressure) {
++					input_report_abs(ts->pen_input_dev, ABS_X, pen_x);
++					input_report_abs(ts->pen_input_dev, ABS_Y, pen_y);
++				}
 +				input_report_abs(ts->pen_input_dev, ABS_PRESSURE, pen_pressure);
 +				input_report_key(ts->pen_input_dev, BTN_TOUCH, !!pen_pressure);
 +				input_report_abs(ts->pen_input_dev, ABS_TILT_X, pen_tilt_x);
@@ -1215,6 +1223,30 @@ index 000000000000..83eddb597544
 +	}
 +}
 +
++static void nvt_pen_charge_state_change_work(struct work_struct *work)
++{
++	struct nvt_ts_data *ts = container_of(work, struct nvt_ts_data,
++					     pen_charge_state_change_work);
++
++	mutex_lock(&ts->lock);
++	disable_pen_input_device(false);
++	mutex_unlock(&ts->lock);
++}
++
++static int nvt_pen_charge_state_notifier_call(struct notifier_block *nb,
++					      unsigned long val, void *v)
++{
++	struct nvt_ts_data *ts = container_of(nb, struct nvt_ts_data,
++					     pen_charge_state_notifier);
++
++	ts->pen_is_charge = !!val;
++	NVT_LOG("pen charge state changed: %s\n",
++		ts->pen_is_charge ? "charging" : "not charging");
++	schedule_work(&ts->pen_charge_state_change_work);
++
++	return NOTIFY_OK;
++}
++
 +int32_t disable_pen_input_device(bool disable) {
 +	uint8_t buf[8] = {0};
 +	int32_t ret = 0;
@@ -1237,7 +1269,7 @@ index 000000000000..83eddb597544
 +
 +	buf[0] = EVENT_MAP_HOST_CMD;
 +	buf[1] = 0x7B;
-+	buf[2] = !!disable;
++	buf[2] = !disable;
 +	ret = CTP_SPI_WRITE(ts->client, buf, 3);
 +	if (ret < 0) {
 +		NVT_ERR("set pen %s failed!\n", disable ? "DISABLE" : "ENABLE");
@@ -1479,8 +1511,8 @@ index 000000000000..83eddb597544
 +		int x_max, y_max;
 +
 +		if (ts->wgp_stylus) {
-+			x_max = ts->abs_x_max * 2 - 1;
-+			y_max = ts->abs_y_max * 2 - 1;
++			x_max = ts->abs_x_max - 1;
++			y_max = ts->abs_y_max - 1;
 +		} else {
 +			x_max = ts->abs_x_max - 1;
 +			y_max = ts->abs_y_max - 1;
@@ -1576,6 +1608,13 @@ index 000000000000..83eddb597544
 +	}
 +	INIT_WORK(&ts->resume_work, nvt_resume_work);
 +	INIT_WORK(&ts->suspend_work, nvt_suspend_work);
++	INIT_WORK(&ts->pen_charge_state_change_work, nvt_pen_charge_state_change_work);
++	ts->pen_charge_state_notifier.notifier_call = nvt_pen_charge_state_notifier_call;
++	ret = pen_charge_state_notifier_register_client(&ts->pen_charge_state_notifier);
++	if (ret) {
++		NVT_ERR("register pen charge notifier failed. ret=%d\n", ret);
++		goto err_register_pen_charge_notifier_failed;
++	}
 +
 +	bTouchIsAwake = 1;
 +	NVT_LOG("end\n");
@@ -1584,6 +1623,11 @@ index 000000000000..83eddb597544
 +
 +	return 0;
 +
++err_register_pen_charge_notifier_failed:
++	if (ts->event_wq) {
++		destroy_workqueue(ts->event_wq);
++		ts->event_wq = NULL;
++	}
 +err_alloc_work_thread_failed:
 +
 +#if NVT_TOUCH_ESD_PROTECT
@@ -1661,6 +1705,9 @@ index 000000000000..83eddb597544
 +static void nvt_ts_remove(struct spi_device *client)
 +{
 +	NVT_LOG("Removing driver...\n");
++
++	pen_charge_state_notifier_unregister_client(&ts->pen_charge_state_notifier);
++	cancel_work_sync(&ts->pen_charge_state_change_work);
 +
 +#if NVT_TOUCH_ESD_PROTECT
 +	if (nvt_esd_check_wq) {
@@ -2014,10 +2061,10 @@ index 000000000000..83eddb597544
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/input/touchscreen/nt36523/nt36xxx.h b/drivers/input/touchscreen/nt36523/nt36xxx.h
 new file mode 100644
-index 000000000000..beb5fc07dd6c
+index 000000000000..8efd6c595982
 --- /dev/null
 +++ b/drivers/input/touchscreen/nt36523/nt36xxx.h
-@@ -0,0 +1,264 @@
+@@ -0,0 +1,267 @@
 +/*
 + * Copyright (C) 2010 - 2018 Novatek, Inc.
 + * Copyright (C) 2021 XiaoMi, Inc.
@@ -2042,6 +2089,7 @@ index 000000000000..beb5fc07dd6c
 +#include <drm/drm_panel.h>
 +#include <linux/delay.h>
 +#include <linux/input.h>
++#include <linux/notifier.h>
 +#include <linux/of.h>
 +#include <linux/spi/spi.h>
 +#include <linux/uaccess.h>
@@ -2180,8 +2228,10 @@ index 000000000000..beb5fc07dd6c
 +	uint32_t int_trigger_type;
 +	int32_t irq_gpio;
 +	uint32_t irq_flags;
++	struct gpio_desc *irq_gpiod;
 +	int32_t reset_gpio;
 +	uint32_t reset_flags;
++	struct gpio_desc *reset_gpiod;
 +	struct mutex lock;
 +	const struct nvt_ts_mem_map *mmap;
 +	uint8_t carrier_system;
@@ -3853,5 +3903,5 @@ index 000000000000..b4b6fce51a60
 +		.mmap = &NT36676F_memory_map, .hwinfo = &NT36676F_hw_info}
 +};
 -- 
-2.52.0
+2.55.0
 

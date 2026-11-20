@@ -54,11 +54,6 @@ datatype = "boolean"
 default_value = false
 allow_device_variant_suffix = true
 
-[variable.metadata.external_storage]
-description = "Does the device have an SD card slot or other external storage medium?"
-datatype = "boolean"
-default_value = false
-
 [variable.metadata.flash_method]
 description = "Method used to flash the device"
 datatype = "enumeration"
@@ -131,7 +126,7 @@ default_value = false
 
 [variable.metadata.initfs_compression]
 description = "Format and compression level to use when compressing the initramfs. The format for this is: FORMAT:LEVEL, for example zstd:fast. Supported formats are zstd, lz4, lzma, gzip, none. Supported compression levels are: default, fast, best. This option does not impact the initramfs-extra archive, it is generated without any compression"
-default_value = "gzip:default"
+default_value = "zstd"
 
 [variable.metadata.create_initfs_extra]
 description = "Instructs mkinitfs to generate an initramfs archive, and an initramfs-extra archive. The initramfs is a minimal archive designed for devices with small boot partitions."
@@ -295,7 +290,12 @@ datatype = "boolean"
 default_value = false
 
 [variable.flash.generate_uboot_fit_images]
-description = "Set `true` to generate U-boot FIT images, one image per *.its file in board's u-boot directory"
+description = "Set `true` to generate U-Boot FIT images, one image per *.its file in board's u-boot directory"
+datatype = "boolean"
+default_value = false
+
+[variable.flash.generate_uboot_env]
+description = "Set `true` to generate a U-Boot environment file. This will generate a /boot/environ.txt file which can be sourced in bootscripts."
 datatype = "boolean"
 default_value = false
 
@@ -403,7 +403,7 @@ datatype = "integer"
 default_value = 512
 
 [variable.flash.sd_embed_firmware]
-description = "A comma-separated list of binary:offset (where binary is under /usr/share)"
+description = "A comma-separated list of binary:offset (where binary is under /usr/share and can be optionally globbed to match exactly one firmware binary)"
 
 [variable.flash.sd_embed_firmware_step_size]
 description = "The number of bytes for each increment of the offset specified in `sd_embed_firmware`"
@@ -528,6 +528,13 @@ epitaph = "Originally intended to point osk-sdl to the hardware keyboard, but wa
 description = "Whether the device has a hardware keyboard"
 fate = "obsolete"
 epitaph = "Programs should automatically detect if the device currently has a keyboard or not (often it can be hotplugged anyway)."
+
+[variable.metadata.external_storage]
+description = "Does the device have an SD card slot or other external storage medium?"
+datatype = "boolean"
+default_value = false
+fate = "obsolete"
+epitaph = "No longer used by any tooling."
 
 [variable.metadata.modules_initfs]
 description = "List of kernel modules to include in the initramfs."

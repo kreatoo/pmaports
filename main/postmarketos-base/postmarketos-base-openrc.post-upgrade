@@ -24,6 +24,13 @@ if old_ver_less "31-r1"; then
     set +x
 fi
 
+# unudhcpd is now OpenRC-managed, previously it was started by the initramfs and
+# kept running completely unmanaged. Enable it on upgrade
+if old_ver_less "71-r0"; then
+    ln -s /etc/init.d/unudhcpd /etc/init.d/unudhcpd.usb0
+    rc-update add unudhcpd.usb0 boot
+fi
+
 # Fixup old pmOS installations that run setup-timezone without "-i" option
 # and those later installations that run with it, but have missing
 # https://gitlab.alpinelinux.org/alpine/alpine-conf/-/merge_requests/157
@@ -56,5 +63,12 @@ rc-update -q add postmarketos-zram-swap default
 rc-update -qq del tmpfs default || true
 # To disable mounting /tmp as tmpfs, set tmpfs_size=0 in /etc/conf.d/tmpfs
 rc-update -q add tmpfs boot
+# sysusers.d and tmpfiles.d are hard dependencies of the rootfs and should
+# always be enabled, so forcing this on upgrade will not impact users
+rc-update -q add systemd-tmpfiles-setup boot
+rc-update -q add systemd-tmpfiles-clean shutdown
+rc-update -q add systemd-sysusers sysinit
+rc-update -q add systemd-tmpfiles-setup-dev-early sysinit
+rc-update -q add systemd-tmpfiles-setup-dev sysinit
 
 exit 0

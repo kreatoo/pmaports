@@ -1,12 +1,11 @@
-# Contributor: Jakub Panek <me@panekj.dev>
 # Co-Maintainer: Achill Gilgenast <achill@achill.org>
 # Co-Maintainer: Oliver Smith <ollieparanoid@postmarketos.org>
 maintainer="Clayton Craft <craftyguy@postmarketos.org>"
 pkgname=systemd-stage0
-pkgver=261_rc3
+pkgver=262.2
 _pkgver="${pkgver/_/-}"
 # pkgrel must match systemd!
-pkgrel=1
+pkgrel=0
 pkgdesc="Minimal systemd bootstrap package"
 url="https://github.com/systemd/systemd"
 # armhf: pmb#2618
@@ -16,10 +15,15 @@ license="MIT AND GPL-2.0-only AND LGPL-2.1-or-later"
 # This is only for bootstrapping other packages, make sure it does not get
 # pulled into real installations via !postmarketos-base and !tracedeps
 depends="!postmarketos-base"
+
+# !tracedeps is set to prevent abuild from automatically adding `provides`
+# based on sonames. Without this, apk would consider systemd-stage0
+# a valid provider for packages that depend on systemd. Since we have to use
+# !tracedeps, runtime dependencies must be listed manually in depends_*.
 depends_libs="!postmarketos-base libucontext"
 depends_dev="!postmarketos-base"
 depends_doc="!postmarketos-base"
-options="!tracedeps !check pmb:cross-native2 pmb:strict"
+options="!tracedeps !check pmb:cross-native2"
 subpackages="$pkgname-doc $pkgname-dev $pkgname-libs"
 
 makedepends_build="
@@ -29,15 +33,9 @@ makedepends_build="
 	py3-jinja2
 	bash
 "
-# Use dbus-dev from Alpine
 makedepends_host="
-	dbus-dev<9990
-	libblkid
-	libcap
-	libcap-dev
-	libintl
 	libucontext-dev
-	musl-libintl
+	linux-headers
 	util-linux
 	util-linux-dev
 "
@@ -51,9 +49,8 @@ source="systemd-$pkgver.tar.gz::https://github.com/systemd/systemd/archive/refs/
 builddir="$srcdir/systemd-$_pkgver"
 
 build() {
-	# NOTE: tests=true to work around https://github.com/systemd/systemd/issues/39984
 	abuild-meson \
-		-Dtests=true \
+		-Dtests=false \
 		-Ddbuspolicydir=/usr/share/dbus-1/system.d \
 		-Ddbussessionservicedir=/usr/share/dbus-1/services \
 		-Ddbussystemservicedir=/usr/share/dbus-1/system-services \
@@ -80,8 +77,8 @@ build() {
 		-Dnss-mymachines=disabled \
 		-Dnss-resolve=disabled \
 		-Dnss-systemd=false \
-		-Dsysext=true \
-		-Dsysusers=true \
+		-Dsysext=false \
+		-Dsysusers=false \
 		-Dselinux=disabled \
 		-Dinstall-sysconfdir=false \
 		\
@@ -98,7 +95,39 @@ build() {
 		-Ddefault-locale=en_US.UTF-8 \
 		\
 		-Didn=false \
-		-Dsysvinit-path="" \
+		\
+		-Dbacklight=false \
+		-Dbinfmt=false \
+		-Dcoredump=false \
+		-Dfirstboot=false \
+		-Dhibernate=false \
+		-Dhostnamed=false \
+		-Dhwdb=false \
+		-Dinitrd=false \
+		-Dkernel-install=false \
+		-Dlocaled=false \
+		-Dlogind=false \
+		-Dmachined=false \
+		-Dmountfsd=false \
+		-Dnetworkd=false \
+		-Dnspawn=disabled \
+		-Dnsresourced=false \
+		-Doomd=false \
+		-Dportabled=false \
+		-Dpstore=false \
+		-Dquotacheck=false \
+		-Drandomseed=false \
+		-Drepart=false \
+		-Dresolve=false \
+		-Drfkill=false \
+		-Dsysinstall=false \
+		-Dstoragetm=false \
+		-Dtimedated=false \
+		-Dtimesyncd=false \
+		-Dtmpfiles=false \
+		-Dvconsole=false \
+		-Dxdg-autostart=false \
+		-Dtpm=false \
 		build .
 	meson compile ${JOBS:+-j ${JOBS}} -C build
 }
@@ -127,5 +156,5 @@ package() {
 }
 
 sha512sums="
-facbcb7831fb84a38eaee5804d9aa03382486006cdb559010d6d353ad9a3986b516522cde1f0e0808fb49365859f790dd1caed24875a1c9e339e892d09d2cf30  systemd-261_rc3.tar.gz
+111da2e78c999f299c40532a69d5ea7aa564e9f761e889d781777c90f771770767ba5625b79d7b4ae179830b191cae2f80dca85799dd5ad973144e82d0b3735d  systemd-262.2.tar.gz
 "

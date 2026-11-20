@@ -1,8 +1,7 @@
-# Contributor: Adam Thiede <me@adamthiede.com>
 maintainer="Adam Thiede <me@adamthiede.com>"
 pkgname=device-sqfmi-beepy
 pkgdesc="SQFMI Beepy"
-pkgver=5
+pkgver=9
 pkgrel=0
 
 _kbdmodname=beepy-kbd
@@ -10,8 +9,8 @@ _kbdmodver=2.11
 _kbdcommit="e65472734decd59450e2448d1218c4f69babcea8"
 
 _dispmodname=sharp-drm
-_dispmodver=1.6
-_dispcommit="b8e7a86e962541b5d741c8fcc18152305279f118"
+_dispmodver=1.7
+_dispcommit="98c43928e3110fe0db90003c6dc5727bf4cae082"
 
 _overlaycommit="910b9f59c2bbe5e7f33725370ceff0a4c18777af"
 
@@ -19,7 +18,7 @@ url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
 options="!check !archcheck"
-install="$pkgname.post-install $pkgname.post-upgrade"
+install="$pkgname.post-install $pkgname.post-upgrade $pkgname-openrc.post-install $pkgname-modules.post-install"
 depends="
 	postmarketos-base
 	raspberrypi-bootloader
@@ -36,8 +35,9 @@ source="
 	$pkgname-$_kbdcommit.tar.gz::https://github.com/ardangelo/beepberry-keyboard-driver/archive/$_kbdcommit.tar.gz
 	$pkgname-$_overlaycommit.tar.gz::https://github.com/ardangelo/beepy-symbol-overlay/archive/$_overlaycommit.tar.gz
 	$pkgname-$_dispcommit.tar.gz::https://github.com/ardangelo/sharp-drm-driver/archive/$_dispcommit.tar.gz
-	keyboard-driver-compiler-warnings.patch
+	keyboard-driver.patch
 	symbol-overlay.patch
+	sharp-drm-warnings.patch
 "
 subpackages="$pkgname-overlay $pkgname-modules $pkgname-openrc"
 
@@ -64,7 +64,7 @@ prepare() {
 	built_modules=$_dispmodname.ko
 
 	build() {
-		KERNELRELEASE=\$(find /lib/modules -type d -iname '*-rpi' -mindepth 1 -maxdepth 1 -exec basename {} \;|sort|tail -n1) make
+		KERNELRELEASE=\$(find /usr/lib/modules -type d -iname '*-rpi' -mindepth 1 -maxdepth 1 -exec basename {} \;|sort|tail -n1) make
 	}
 	EOF
 
@@ -75,7 +75,7 @@ prepare() {
 	built_modules=$_kbdmodname.ko
 
 	build() {
-		KERNELRELEASE=\$(find /lib/modules -type d -iname '*-rpi' -mindepth 1 -maxdepth 1 -exec basename {} \;|sort|tail -n1) make
+		KERNELRELEASE=\$(find /usr/lib/modules -type d -iname '*-rpi' -mindepth 1 -maxdepth 1 -exec basename {} \;|sort|tail -n1) make
 	}
 	EOF
 }
@@ -117,13 +117,12 @@ package() {
 	cp -r $_dispdir/src $_dispdir/sharp-drm.dts "$dispdestdir"
 
 	# install symbol-overlay
-	install -Dm755 $_overlaydir/symbol-overlay "$pkgdir"/sbin/symbol-overlay
+	install -Dm755 $_overlaydir/symbol-overlay "$pkgdir"/usr/bin/symbol-overlay
 }
 
 modules() {
 	install_if="$pkgname=$pkgver-r$pkgrel"
 	depends="linux-rpi-dev akms build-base"
-	install="$subpkgname.post-install"
 
 	amove boot/overlays
 	amove usr/src
@@ -131,12 +130,11 @@ modules() {
 
 overlay() {
 	install_if="$pkgname=$pkgver-r$pkgrel"
-	amove sbin/symbol-overlay
+	amove usr/bin/symbol-overlay
 }
 
 openrc() {
 	install_if="$pkgname=$pkgver-r$pkgrel openrc"
-	install="$subpkgname.post-install"
 	mkdir -p "$subpkgdir"
 }
 
@@ -147,7 +145,8 @@ sha512sums="
 2b387eeb9afddef25a9bb757ec4481c446e213cd1da88291c5b0af0e631bc0bd224588fe6cecb79620bc58820eefa37d0a234ed1b417af2946af48d8f3254d38  usercfg.txt
 d3060bcbca3e90aa26c8a8d6772d8b07116e0cc4f0ae97d44d896434510493367966f23bb86d82f9719723b3bc7ee6b7a9e4b93b5185822b32ffaf4ee0411813  device-sqfmi-beepy-e65472734decd59450e2448d1218c4f69babcea8.tar.gz
 442703affd913e0bdbbfe5d5eedd49a8b743832702a6fb8e96d49530dd172a7bcdbc36d908b93c61cb455824c85be8ffaa2c67506ae72827e874129f0ba6f912  device-sqfmi-beepy-910b9f59c2bbe5e7f33725370ceff0a4c18777af.tar.gz
-ab3b5ee73040c03fa2e5481b893a8ff9be808cd1b27f538ed45df18dada09aa14ead8fbf3fa18863ef9f44d8703fff182a2e5e3107511d728864bba8f31ae292  device-sqfmi-beepy-b8e7a86e962541b5d741c8fcc18152305279f118.tar.gz
-8aa27fbd0ec58bf9a77fa105568e31c58355f4f1a33d9e932950b08fe9dd134beaaf3a7350357a3b471d96c2ceee17460c514f81083832dd97486586772873b5  keyboard-driver-compiler-warnings.patch
-fc3c720c5c8af33f2bfd8a745340547c29effc458df761cacfa9e6bed7e09f5f5ecea98e5a6c25d630cefc2a4b3e31016d42839c640759cd715bcb81d9560f38  symbol-overlay.patch
+e04f5abcac0399a6cdc0c1eaddac31c5541cb72eac6b00cae4595a88bad6742e0d7c391a1b9f6b553a96b3cbdaad5a740de6f5a3845985507c994a3bdeaa7e1b  device-sqfmi-beepy-98c43928e3110fe0db90003c6dc5727bf4cae082.tar.gz
+2ae7c76ce4ad46752d64b0a63c3855f9b429bc5c0c06115832b9683f5b02e2ecc344c595bc05aa70ca0019a773d2144334695b6a5680835bf63b58ac10fc0a00  keyboard-driver.patch
+e503efb35d24b260560122ea167bd3866f6c41dbcfb5db010adbde4153d9531307d0c2552adac1b6bcc770cf80e0be6162c55c942364ff8fdb325baeb201ad07  symbol-overlay.patch
+817ca7fae650b406f239d1c5807fa7402e9aa7fb7d570f45c60969f8d84b02e746e4b3a581d27cde340a0af703782a67bd7cd79c9822a7103306d0b8aa9b2b90  sharp-drm-warnings.patch
 "

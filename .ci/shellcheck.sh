@@ -15,7 +15,6 @@ fi
 # Shell: shellcheck
 sh_files="
 	./main/mdss-fb-init-hack/mdss-fb-init-hack.sh
-	./main/postmarketos-base-ui/rootfs-usr-lib-NetworkManager-dispatcher.d-50-dns-filter.sh
 	./main/postmarketos-duranium/rootfs-usr-bin-duranium-set-channel
 	./main/postmarketos-duranium/rootfs-usr-libexec-duranium-first-boot
 	./main/postmarketos-duranium/rootfs-usr-libexec-duranium-usb-gadget-setup
@@ -23,10 +22,11 @@ sh_files="
 	./main/postmarketos-initramfs/init.sh
 	./main/postmarketos-initramfs/init_functions.sh
 	./main/postmarketos-mkinitfs-hook-netboot/netboot.sh
+	./main/postmarketos-test/*.sh
 	./main/postmarketos-ui-os-installer/rootfs-usr-bin-pmos_setup.sh
 	./main/postmarketos-usb-moded/rootfs-usr-lib-systemd-system-generators-umtprd-config-generator
 	./main/ttyescape/*.post-install
-	./main/unl0kr/unlock.sh
+	./main/postmarketos-buffybox/unlock.sh
 	./device/community/soc-qcom/call_audio_idle_suspend_workaround.sh
 	./device/testing/device-apple-mac-aarch64/*.sh
 	./extra-repos/systemd/postmarketos-base-systemd/rootfs-usr-libexec-systemd-apk-trigger

@@ -6,10 +6,10 @@ if [ -z "$(type -t arch_to_hostspec)" ]; then
 	arch_to_hostspec() { :; }
 fi
 
-maintainer=""
+maintainer="Oliver Smith <ollieparanoid@postmarketos.org>"
 pkgname=musl-ppc64le
 pkgver=1.2.6
-pkgrel=2
+pkgrel=6
 arch="aarch64 x86_64"
 subpackages="musl-dev-ppc64le:package_dev"
 
@@ -58,6 +58,6 @@ package_dev() {
 }
 
 sha512sums="
-fa1484bf04b70b27bf6540d8b3f506a334623a160c7d86dd5c58f418dd751eb641c35a0166b485c8ba1bba57f4e929b277352eae5e55cd740a0b73e741f72cc7  musl-1.2.6-r2-ppc64le-edge.apk
-4ea8db19500bcc05e31c1e9c37e43742b150e9218ba585f98b4cde918abd1896431797921f19ff6a82f42d2db245ccfe368ab552c01637d17f19a8ff33db0396  musl-dev-1.2.6-r2-ppc64le-edge.apk
+9f690762d9e2415e47e0731470deb6098e8996d72f5a0e487317c7e263c58d8ecbf959ef03c78d01aba196e6094efaae048335c751b61824d7670db4a58e81a6  musl-1.2.6-r6-ppc64le-edge.apk
+1347dcaa2c3f3bac4985fdfa986598be416462a311380c52a0a828a148d459a234d5e9e22740e62c6844222939631c82fb194e1216da0ef119013f060b0b4170  musl-dev-1.2.6-r6-ppc64le-edge.apk
 "

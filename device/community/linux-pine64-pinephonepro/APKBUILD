@@ -1,10 +1,8 @@
 maintainer="Rudraksha Gupta <guptarud@gmail.com>"
 pkgname=linux-pine64-pinephonepro
-pkgver=7.0
-_pkgver=7.0
-_tagdate=20251104-2007
-pkgrel=2
-pkgdesc="Mainline kernel for the pinephone pro"
+pkgver=7.3
+pkgrel=0
+pkgdesc="Mainline kernel for the Pinephone Pro"
 arch="aarch64"
 _flavor="${pkgname#linux-}"
 url="https://kernel.org"
@@ -18,6 +16,7 @@ makedepends="
 	bash
 	bison
 	clang
+	elfutils-dev
 	findutils
 	flex
 	gmp-dev
@@ -28,8 +27,10 @@ makedepends="
 	mpc1-dev
 	mpfr-dev
 	openssl-dev
+	pahole
 	perl
 	postmarketos-installkernel
+	python3
 	rsync
 	xz
 	zstd
@@ -40,19 +41,14 @@ case "$CARCH" in
 	arm*) _carch="arm" ;;
 esac
 
-# Currently, the megi kernel is the most up-to-date pinephone pro kernel. As postmarketOS doesn't want to use the Megi kernel directly, we can strip the Megi kernel down to it's essentials by doing the following:
-#
-#    git reset --hard v7.0
-#    git merge megi/fusb302-7.0 megi/imx258-7.0 megi/rk818-7.0 megi/rt5640-7.0 megi/rk3399-typec-7.0 megi/typec-extcon-7.0 megi/tcpm-7.0 megi/arasan-7.0 megi/ppp-7.0
-#    git cherry-pick ebc624f4    # `arm64: dts: rockchip: rk3399-s: Add DMC table `
-#    git rebase v7.0
-#
-# This reduces the massive amount of patches that megi has, down to the ones that the pinephone pro needs and also bubbles them up to be on top of whatever tag we want.
-
 # Source
 _config="config-$_flavor.$CARCH"
+case $pkgver in
+	*.*.*)	_kernver=${pkgver%.0};;
+	*.*)	_kernver=$pkgver;;
+esac
 source="
-	https://codeberg.org/LogicalErzor/linux/archive/ppp-megi-7.0-stripped.tar.gz
+	https://codeberg.org/LogicalErzor/linux/archive/ppp-${pkgver}.tar.gz
 	config-$_flavor.aarch64
 	"
 builddir="$srcdir/linux"
@@ -78,7 +74,7 @@ package() {
 		INSTALL_MOD_STRIP=1 \
 		INSTALL_PATH="$pkgdir"/boot \
 		INSTALL_DTBS_PATH="$pkgdir"/boot/dtbs-$_flavor
-	rm -f "$pkgdir"/lib/modules/*/build "$pkgdir"/lib/modules/*/source
+	rm -f "$pkgdir"/usr/lib/modules/*/build "$pkgdir"/usr/lib/modules/*/source
 
 	install -D "$builddir"/include/config/kernel.release \
 		"$pkgdir"/usr/share/kernel/$_flavor/kernel.release
@@ -86,6 +82,6 @@ package() {
 
 
 sha512sums="
-60b6b72b01b4c842569655e35a826dd1249e8584b670e102ac26eea8a76bd5b8b29cc87240e30b765273d459cc2114ad6f904750245ef3d2e5f5619ea2fa340c  ppp-megi-7.0-stripped.tar.gz
-19661756049d5db085b453a3539c268ed3a6956e69cd19856f41385aa7491c19f0c11582f6168a64edfbe250746bab3f7ffa0b8f2891f9736c53136b7f272c15  config-pine64-pinephonepro.aarch64
+c17288471195940ea2567da9f9466b4e38ad715abf07ebcc2b7e6036ed4513ba2703a1943364f172222fce343b6e3a2f8c5a55e222a51a8f5b877fba0688ade3  ppp-7.3.tar.gz
+be4eaeb9a3e397f135fd4c89e2bfe2142bf42cb50e3c3769280bb3b396fb4700bef025c52c5e712a9611ca89c4f953ce15d452816fac357d25b7f38d15623e1c  config-pine64-pinephonepro.aarch64
 "

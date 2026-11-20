@@ -105,6 +105,10 @@ parse_cmdline_item() {
 			# shellcheck disable=SC2034
 			log_info=y
 			;;
+		cryptkey)
+			# shellcheck disable=SC2034
+			cryptkey="$value"
+			;;
 		[![:alpha:]_]* | [[:alpha:]_]*[![:alnum:]_]*)
 			# invalid shell variable, ignore it
 			;;
@@ -748,7 +752,7 @@ mount_root_partition() {
 		fail_halt_boot
 	fi
 
-	if [ -e /sysroot/.stowaways/pmos/etc/os-release ]; then
+	if [ -e /sysroot/.stowaways/pmos/usr/lib/os-release ]; then
 		umount /sysroot
 
 		mkdir /stowaway
@@ -756,7 +760,7 @@ mount_root_partition() {
 		mount --bind /stowaway/.stowaways/pmos/ /sysroot
 	fi
 
-	if ! [ -e /sysroot/etc/os-release ]; then
+	if ! [ -e /sysroot/usr/lib/os-release ]; then
 		splash_set_error "Root partition does not contain a root filesystem\nhttps://postmarketos.org/troubleshooting"
 		fail_halt_boot
 	fi
@@ -909,6 +913,11 @@ start_unudhcpd() {
 	[ "$(pidof unudhcpd)" ] && return
 
 	local usb_iface
+	# Don't run if there's no USB gadget.
+	if [ -z "$(cat "$CONFIGFS/g1/UDC" 2>/dev/null)" ] &&
+		! [ -e /sys/class/android_usb/android0 ]; then
+		return
+	fi
 
 	# Skip if disabled
 	# shellcheck disable=SC2154
@@ -1056,8 +1065,13 @@ debug_shell() {
 	local have_udc
 	have_udc="$(cat $CONFIGFS/g1/UDC)"
 
+	# Use USB ACM gadget if no UDC is available,
+	# if UDC is available use configured USB networking,
+	# but DHCP server needs to be started
 	if [ -n "$have_udc" ]; then
 		setup_usb_acm_configfs
+	else
+		start_unudhcpd
 	fi
 
 	# mount pstore, if possible

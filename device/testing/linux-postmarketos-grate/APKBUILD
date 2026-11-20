@@ -1,41 +1,54 @@
 # Co-Maintainer: Svyatoslav Ryhel <clamor95@gmail.com>
 maintainer="Robert Eckelmann <longnoserob@postmarketos.org>"
 pkgname=linux-postmarketos-grate
-pkgver=7.0.1
+pkgver=7.3.1
 pkgrel=0
+_commit="eab1ff1e1eefc77e0adb3384f45dc3aadd9f5714"
 pkgdesc="Linux kernel with experimental patches for Tegra"
-arch="armv7"
 url="https://codeberg.org/libre-tegra/linux"
+arch="armv7"
 license="GPL-2.0-only"
-options="!strip !check !tracedeps pmb:cross-native pmb:kconfigcheck-community pmb:kconfigcheck-uefi"
 makedepends="
 	bison
 	clang
+	elfutils-dev
 	findutils
 	flex
+	linux-headers
 	lld
 	llvm
 	openssl-dev
+	pahole
 	perl
 	postmarketos-installkernel
-	xz
+	python3
 	zstd
 "
-
 # Source
-_flavor="${pkgname#linux-}"
 _tag="stable"
-_commit="bfffc6d6656e87f3de3aa4c09d852849081ef088"
 _carch="arm"
-_config="config-$_flavor.$arch"
-source="$pkgname-$_tag.tar.gz::$url/archive/$_commit.tar.gz
-	$_config
+source="$pkgname-$_tag.tar.gz::https://codeberg.org/libre-tegra/linux/archive/$_commit.tar.gz
+	config-${pkgname#linux-}.$arch
 "
 builddir="$srcdir/linux"
+options="
+	!check
+	!strip
+	!tracedeps
+	pmb:cross-native
+	pmb:kconfigcheck-community
+	pmb:kconfigcheck-uefi
+"
+
+# Used internally by pmbootstrap. Don't touch.
+# TODO: Remove once minimum default pmbootstrap version supports
+# kernel packages without '_flavor' and '_config'.
+_config="config-${pkgname#linux-}"
+_flavor="${pkgname#linux-}"
 
 prepare() {
 	default_prepare
-	cp "$srcdir/config-$_flavor.$CARCH" .config
+	cp "$srcdir"/config-${pkgname#linux-}.$arch .config
 }
 
 build() {
@@ -50,16 +63,16 @@ package() {
 		ARCH="$_carch" \
 		LLVM=1 \
 		INSTALL_PATH="$pkgdir"/boot \
-		INSTALL_MOD_PATH="$pkgdir" \
+		INSTALL_MOD_PATH="$pkgdir"/usr \
 		INSTALL_MOD_STRIP=1 \
 		INSTALL_DTBS_PATH="$pkgdir"/boot/dtbs
-	rm -f "$pkgdir"/lib/modules/*/build "$pkgdir"/lib/modules/*/source
+	rm -f "$pkgdir"/usr/lib/modules/*/build "$pkgdir"/usr/lib/modules/*/source
 
-	install -D "$builddir"/include/config/kernel.release \
+	install -Dm644 "$builddir"/include/config/kernel.release \
 		"$pkgdir"/usr/share/kernel/$_flavor/kernel.release
 }
 
 sha512sums="
-fa6a723db93d0c4c799ca8fb69a37ce13cc98a80ff688bc45dea7bd6d36df05b8f0deaa15a416e271a4ea0c5bb2097e63fc2d0a02903f11e6c404fbec82718a2  linux-postmarketos-grate-stable.tar.gz
-57025e07f56dcef80ab9c79382b8acaa4428115bf5a9b7db937a346a9a383f2acf4e405fa909012c6545514c58b7990be8dd47868f694500065df9f6fd69f1d9  config-postmarketos-grate.armv7
+dc186ac92e0c0285fda36cf0e508d09c9683c57238ded3668b355129a1c72ddc59bd72ee93c7fbdac0d472516b1d4903357c04ed2fa43f7b6695d70274deb579  linux-postmarketos-grate-stable.tar.gz
+9dc7eb8f12974ebf9a432212bc90bf87949650f9f3043d5ff3070b8317d7f393b02faa2399a6c8b84bf3fd030f4467f199ab9688c136108f371e293013e2a8bb  config-postmarketos-grate.armv7
 "

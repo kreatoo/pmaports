@@ -1,6 +1,6 @@
 maintainer="Clayton Craft <clayton@craftyguy.net>"
 pkgname=linux-postmarketos-asahi
-pkgver=7.0.11_p2
+pkgver=7.3.4_p1
 pkgrel=0
 _rel=${pkgver#*_p}
 _kver=${pkgver%_p*}
@@ -17,6 +17,9 @@ options="!strip
 	!tracedeps
 	pmb:cross-native
 	pmb:kconfigcheck-community
+	pmb:kconfigcheck-lockdown
+	pmb:kconfigcheck-rust
+	pmb:kconfigcheck-selinux
 	pmb:kconfigcheck-uefi
 	pmb:kconfigcheck-virt
 "
@@ -52,11 +55,8 @@ _repository="linux"
 source="
 	$pkgname-$_asahiver.tar.gz::https://github.com/AsahiLinux/linux/archive/refs/tags/asahi-$_asahiver.tar.gz
 	config-postmarketos-asahi.aarch64
-
-	0001-nvmem-apple-spmi-nvmem-Fix-CFI-failures.patch
 "
 builddir="$srcdir/linux-asahi-$_asahiver"
-_defconfig="defconfig"
 
 prepare() {
 	default_prepare
@@ -66,12 +66,12 @@ prepare() {
 build() {
 	unset LDFLAGS
 	make ARCH="$_carch" LLVM=1 \
-		KBUILD_BUILD_VERSION="$((pkgrel + 1 ))-$_flavor"
+		KBUILD_BUILD_VERSION="$((pkgrel + 1))-$_flavor"
 }
 
 package() {
 	install -Dm644 "$builddir/arch/$_carch/boot/vmlinuz.efi" \
-			"$pkgdir/boot/linux.efi"
+		"$pkgdir/boot/linux.efi"
 
 	make modules_install dtbs_install \
 		ARCH="$_carch" \
@@ -81,14 +81,13 @@ package() {
 		INSTALL_MOD_STRIP=1 \
 		INSTALL_DTBS_PATH="$pkgdir"/boot/dtbs-asahi
 
-	rm -f "$pkgdir"/lib/modules/*/build "$pkgdir"/lib/modules/*/source
+	rm "$pkgdir"/usr/lib/modules/*/build
 
 	install -D "$builddir"/include/config/kernel.release \
 		"$pkgdir"/usr/share/kernel/$_flavor/kernel.release
 }
 
 sha512sums="
-c04f15e7b231d37aa14c2311eb580e56adca1bc32e718fbbf4651bd12d89a864b1b396f83640d9b57e5729390312262d35b1709c83dbdf6988fb69f3ba4663ac  linux-postmarketos-asahi-7.0.11-2.tar.gz
-1444f29dc22fc98419ca3fe71d9d41890597c33cf3b2befba1f14fcf970b6172abebbfac95a3bbf9229a393954864a94f181cfd7fb8cedf9ac9a51f7540ff351  config-postmarketos-asahi.aarch64
-8d205300cfabe192b53ed1cc644b087e76421eb973e1b2a31d657e4f2676badebdfcf6b0865569c43b4b904935435f6e729c3a8d4a6221fb5792e40ec1017a0f  0001-nvmem-apple-spmi-nvmem-Fix-CFI-failures.patch
+d8f6f9fcea409e7bec399ea0a506b63eb15fb3c118bbfab145981e261b537ac00629db374fe1dd3365bbf082105ff9329c546c4b906e85f91a8ea54eabc4db81  linux-postmarketos-asahi-7.3.4-1.tar.gz
+fd98011c59847f50f88c2f620d562d704393bc67b7db6af2c5ec78e39ff2405928265402b919b860e2233d46f5335f76f3f163f8f21384eac0d3901e67a442d4  config-postmarketos-asahi.aarch64
 "

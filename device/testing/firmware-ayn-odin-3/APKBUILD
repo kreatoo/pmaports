@@ -1,0 +1,25 @@
+maintainer="Anton Bambura <jenneron@protonmail.com>"
+pkgname=firmware-ayn-odin-3
+pkgver=2
+_commit="8834a0c80f5b24fee5ed9e18c1560dc48a6f1bd9"
+pkgrel=0
+pkgdesc="Firmware for AYN Odin 3"
+url="https://github.com/ROCKNIX/extra-firmware"
+arch="aarch64"
+license="proprietary"
+options="!check !strip !archcheck !tracedeps textrels pmb:cross-native"
+_repo="extra-firmware"
+source="$_repo-$_commit.tar.gz::https://github.com/ROCKNIX/$_repo/archive/$_commit.tar.gz"
+builddir="$srcdir/$_repo-$_commit"
+
+package() {
+	local _files="amss.bin aux_ucode.bin m3.bin regdb.bin board-2.bin qdss.cfg"
+	for f in $_files; do
+		install -Dm644 "$builddir/SM8750/ath12k/WCN7860/hw2.0/$f" \
+			-t "$pkgdir/usr/lib/firmware/ath12k/WCN7860/hw2.0"
+	done
+}
+
+sha512sums="
+20670308d8d79a0e43dce0e73996403d2e7d9071be11e448e196c9721912296eae0a2ee87379943055a193431d0eedd04c14c7636995b7b6e4eb89341e4ff1f9  extra-firmware-8834a0c80f5b24fee5ed9e18c1560dc48a6f1bd9.tar.gz
+"

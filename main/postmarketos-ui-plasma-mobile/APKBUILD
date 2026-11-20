@@ -1,8 +1,9 @@
 # Reference: https://postmarketos.org/uipkg
+# Co-Maintainer: Aster Boese (@JustSoup321) <asterboese@mailbox.org>
 maintainer="Bart Ribbers <bribbers@disroot.org>"
 pkgname=postmarketos-ui-plasma-mobile
 pkgver=6
-pkgrel=11
+pkgrel=10
 pkgdesc="(Wayland) Mobile variant of KDE Plasma"
 url="https://wiki.postmarketos.org/wiki/Plasma_Mobile"
 # armhf blocked by pmaports#75
@@ -29,6 +30,7 @@ _pmb_recommends="
 	qmlkonsole
 	spacebar
 	ttyescape
+	vvmplayer
 	"
 source="
 	kscreenlockerrc

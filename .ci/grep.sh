@@ -3,7 +3,7 @@
 # shellcheck shell=busybox
 
 # Description: check various bad patterns with grep
-# https://postmarketos.org/pmb-ci
+# https://nura.eco/pmb-ci
 
 exit_code=0
 
@@ -59,19 +59,10 @@ if grep -qr 'deviceinfo_modules_initfs' -- *; then
 fi
 
 POSTMARKETOS_WALLPAPER_PATH='/usr/share/wallpapers/postmarketos.jpg'
-# The excluded devices are "grandfathered in". New devices should not be added here.
-# See https://gitlab.postmarketos.org/postmarketOS/pmaports/-/issues/2529
-if grep -qr $POSTMARKETOS_WALLPAPER_PATH \
-	--exclude-dir='device-pine64-pinetab' \
-	--exclude-dir='device-oneplus-kebab' \
-	--exclude-dir='device-xiaomi-willow' \
-	-- device; then
+# See https://gitlab.nura.eco/nura/pmaports/-/issues/2529
+if grep -qr $POSTMARKETOS_WALLPAPER_PATH --exclude-dir='archived' -- device; then
 	echo "ERROR: Please don't include configuration files that set the default wallpaper in device-specific packages!"
-	grep --color=always -r $POSTMARKETOS_WALLPAPER_PATH \
-		--exclude-dir='device-pine64-pinetab' \
-		--exclude-dir='device-oneplus-kebab' \
-		--exclude-dir='device-xiaomi-willow' \
-		-- device
+	grep --color=always -r $POSTMARKETOS_WALLPAPER_PATH --exclude-dir='archived' -- device
 	exit_code=1
 fi
 
@@ -93,7 +84,7 @@ fi
 if grep -qEr '^deviceinfo_kernel_cmdline.*[\"\s]console=null' -- device/; then
 	echo "ERROR: Do not use console=null in the kernel command line."
 	echo "Use these params to quiet console on boot: quiet loglevel=2"
-	echo "For more information, see: https://gitlab.postmarketos.org/postmarketOS/pmaports/-/issues/2989"
+	echo "For more information, see: https://gitlab.nura.eco/nura/pmaports/-/issues/2989"
 	exit_code=1
 fi
 
@@ -120,15 +111,47 @@ if grep -qr '# Maintainer:' -- *; then
 	exit_code=1
 fi
 
-if [ -n "$CI_MERGE_REQUEST_DIFF_BASE_SHA" ]; then
-	# Find all moved or new kernel APKBUILDs in main, community or testing
-	MOVED_OR_NEW_MAINLINE_KERNEL_PACKAGES=$(git show --pretty="" --name-only --diff-filter=AR "$CI_MERGE_REQUEST_DIFF_BASE_SHA"..HEAD | grep "device/\(main\|community\|testing\)/linux-.*/APKBUILD" || true)
+# Disallow sysadmin OpenRC files
+if grep -qr '/etc/local.d' --exclude-dir='archived' -- *; then
+	echo "ERROR: Please replace the '/etc/local.d' script with real OpenRC service files."
+	echo "See https://gitlab.nura.eco/nura/pmaports/-/work_items/4360"
+	grep --color=always -r '/etc/local.d' --exclude-dir='archived' -- *
+	exit_code=1
+fi
 
-	if [ -n "$MOVED_OR_NEW_MAINLINE_KERNEL_PACKAGES" ]; then
-		if [ -n "$(grep -L LLVM=1 $MOVED_OR_NEW_MAINLINE_KERNEL_PACKAGES || true)" ]; then
-			echo "ERROR: An added or moved close-to-mainline kernel package is not being built with LLVM."
-			echo "See https://postmarketos.org/edge/2025/11/11/kernels-llvm/ for more details"
-			grep --color=always -L LLVM=1 $MOVED_OR_NEW_MAINLINE_KERNEL_PACKAGES
+# Disallow installation of files to /etc/phoc.ini
+if grep -qr '/etc/phoc.ini' --exclude-dir='archived' -- *; then
+	echo "ERROR: Please replace '/etc/phoc.ini' with '/usr/share/phosh/phoc.ini'"
+	echo "and add 'replaces=phosh' in the following files:"
+	grep --color=always -r '/etc/phoc.ini' --exclude-dir='archived' -- *
+	exit_code=1
+fi
+
+# Disallow contributor comments
+if grep -qr '# Contributor:' --exclude-dir='docs' -- *; then
+	echo 'ERROR: Please remove the contributor comment(s).'
+	echo "See https://docs.nura.eco/pmaports/main/packaging.html"
+	grep --color=always -r '# Contributor:' --exclude-dir='docs' -- *
+	exit_code=1
+fi
+
+	# Disallow non-free firmware subpackages
+if grep -qr 'pkgname-nonfree-firmware' --exclude-dir='archived' -- *; then
+	echo "ERROR: Please remove the nonfree-firmware subpackage(s) and move the firmware to depends in the following APKBUILDs."
+	echo "See https://docs.nura.eco/pmaports/main/packaging/firmware-packages.html"
+	grep --color=always -r 'pkgname-nonfree-firmware' --exclude-dir='archived' -- *
+	exit_code=1
+fi
+
+if [ -n "$CI_MERGE_REQUEST_DIFF_BASE_SHA" ]; then
+	# Find all added, modified or renamed kernel APKBUILDs in main, community or testing
+	MODIFIED_MAINLINE_KERNEL_PACKAGES=$(git show --pretty="" --name-only --diff-filter=AMR "$CI_MERGE_REQUEST_DIFF_BASE_SHA"..HEAD | grep "device/\(main\|community\|testing\)/linux-.*/APKBUILD" || true)
+
+	if [ -n "$MODIFIED_MAINLINE_KERNEL_PACKAGES" ]; then
+		if [ -n "$(grep -L LLVM=1 $MODIFIED_MAINLINE_KERNEL_PACKAGES || true)" ]; then
+			echo "ERROR: A new or modified close-to-mainline kernel package is not being built with LLVM."
+			echo "See https://nura.eco/edge/2025/11/11/kernels-llvm/ for more details"
+			grep --color=always -L LLVM=1 $MODIFIED_MAINLINE_KERNEL_PACKAGES
 			exit_code=1
 		fi
 	fi
@@ -165,9 +188,9 @@ if [ -n "$CI_MERGE_REQUEST_DIFF_BASE_SHA" ]; then
 	NEW_APKBUILDS=$(git show --pretty="" --name-only --diff-filter=A "$CI_MERGE_REQUEST_DIFF_BASE_SHA"..HEAD | grep APKBUILD || true)
 
 	if [ -n "$NEW_APKBUILDS" ]; then
-		if [ -n "$(grep -L '^maintainer="[^"]\+"$' $NEW_APKBUILDS || true)" ]; then
+		if [ -n "$(grep -L '^maintainer="[^"]\+"$' --exclude-dir='device/archived/**' $NEW_APKBUILDS || true)" ]; then
 			echo "ERROR: A new package does not have a maintainer set."
-			grep --color=always -L '^maintainer="[^"]\+"$' $NEW_APKBUILDS
+			grep --color=always -L '^maintainer="[^"]\+"$' --exclude='device/archived/**' $NEW_APKBUILDS || true
 			exit_code=1
 		fi
 	fi

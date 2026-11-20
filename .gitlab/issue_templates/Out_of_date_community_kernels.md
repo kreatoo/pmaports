@@ -1,13 +1,16 @@
 <!-- Use this template to notify community kernel maintainers that their
      kernels are out-of-date and start the timer for moving them to testing.
+
+     Please title the issue:
+     Current community kernels not meeting version requirement (yyyy-mm-dd)
 -->
 
 Hi, as per our
-[device categorization requirements for the community category](https://docs.postmarketos.org/pmaports/main/device-categorization.html#community),
+[device categorization requirements for the community category](https://docs.nura.eco/pmaports/main/device-categorization.html#community),
 devices in the community category may not use a kernel version older than 6
 months.
 
-As of today (dd-mm-yyyy), the following kernels do not meet this requirement:
+As of today (yyyy-mm-dd), the following kernels do not meet this requirement:
 
 * kernel-pkgname: kernel-pkgver, version-release-date (maintainers: @ ...)
 

@@ -3,9 +3,9 @@
 # Co-Maintainer: Stefan Hansson <newbyte@postmarketos.org>
 maintainer="Dang Huynh <dang.huynh@mainlining.org>"
 pkgname=linux-pine64-pinetab2
-pkgver=7.0.6
-_danctnix_kernel_rel=1
+pkgver=7.3.1
 pkgrel=0
+_danctnix_kernel_rel=1
 pkgdesc="Pine64 PineTab 2 mainline"
 arch="aarch64"
 _carch="arm64"
@@ -16,15 +16,19 @@ options="!strip !check !tracedeps
 	pmb:cross-native"
 depends="kmod"
 makedepends="
-	bash
 	bison
+	clang
+	elfutils-dev
 	findutils
 	flex
 	linux-headers
+	lld
+	llvm
+	pahole
 	postmarketos-installkernel
 	openssl-dev
 	perl
-	xz
+	python3
 	zstd
 "
 
@@ -32,40 +36,45 @@ makedepends="
 _tags="v$pkgver-danctnix$_danctnix_kernel_rel"
 _config="config-$_flavor.$arch"
 source="
-	$pkgname-$_tags.tar.gz::https://codeberg.org/DanctNIX/linux-pinetab2/archive/$_tags.tar.gz
+	linux-$pkgver.tar.xz::https://cdn.kernel.org/pub/linux/kernel/v${pkgver%%.*}.x/linux-$pkgver.tar.xz
+	$_tags.patch.zst::https://codeberg.org/DanctNIX/linux-pinetab2/releases/download/$_tags/$_tags.patch.zst
 	$_config
 "
-builddir="$srcdir/linux-pinetab2"
+builddir="$srcdir/linux-$pkgver"
 _outdir="out"
 
 prepare() {
+	# Decrunch the patch file and apply it to the tree
+	zstd -d "$(readlink $srcdir/$_tags.patch.zst)" -o "$srcdir/$_tags.patch"
+	patch -p1 -i "$srcdir/$_tags.patch"
+
 	default_prepare
+
 	cp "$srcdir/config-$_flavor.$CARCH" .config
 }
 
 build() {
 	unset LDFLAGS
-	make ARCH="$_carch" CC="${CC:-gcc}" \
+	make ARCH="$_carch" LLVM=1 HOSTLDFLAGS="-fuse-ld=lld" \
 		KBUILD_BUILD_VERSION="$((pkgrel + 1 ))-$_flavor"
 }
 
 package() {
-	install -Dm644 "$builddir/arch/$_carch/boot/Image" \
-		"$pkgdir/boot/vmlinuz"
-
-	make modules_install dtbs_install \
+	make dtbs_install modules_install zinstall \
 		ARCH="$_carch" \
+		LLVM=1 \
 		INSTALL_PATH="$pkgdir"/boot/ \
 		INSTALL_MOD_PATH="$pkgdir"/usr \
 		INSTALL_MOD_STRIP=1 \
 		INSTALL_DTBS_PATH="$pkgdir"/boot/dtbs
-	rm -f "$pkgdir"/lib/modules/*/build "$pkgdir"/lib/modules/*/source
+	rm -f "$pkgdir"/usr/lib/modules/*/build "$pkgdir"/usr/lib/modules/*/source
 
 	install -D "$builddir"/include/config/kernel.release \
-		"$pkgdir"/usr/share/kernel/$_flavor/kernel.release
+		"$pkgdir"/usr/share/kernel/"$_flavor"/kernel.release
 }
 
 sha512sums="
-b5f0578bf9bc18ea70161bb39fcbbfcd5c92a0d4c58b7c92af64c2277ce2242db3a3551929d608944392bd6b4756bf65a796594acdb4847033a6992ea99ad09b  linux-pine64-pinetab2-v7.0.6-danctnix1.tar.gz
-77b54e385f63436a6fa0a595149d626aae7026dbd748ab121bcbaa88a0e7cf156239033867d8f7acd51b42f04c6cfe9de1c20cc7f687491afe836a7b4759763f  config-pine64-pinetab2.aarch64
+eac8912be329999150a71257adc513e6a52891d122641943c3a440f775267705eff0b275b4d90d5298518ca638ab48fc2b7c3ee109d82f0bb34a1ac081e9c3a2  linux-7.3.1.tar.xz
+cafe6e7d82e5f4ca1bcbad4c3e4f563abfd5492c156cf77d0efd55bc1fd09553a51be58371ae9a232d9201ae5d6c87658b758de5a3ac86aedf937827499b22a9  v7.3.1-danctnix1.patch.zst
+f51599c263644d96eb481462179e2870814d5b391b34ed401055c074068d81d9e95d97859e2f79036834c6727eadaf9698b9edc15dbb1e3686b952ee6c0eede5  config-pine64-pinetab2.aarch64
 "

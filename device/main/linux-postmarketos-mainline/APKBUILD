@@ -1,7 +1,7 @@
 # Co-Maintainer: Achill Gilgenast <achill@achill.org>
 maintainer="Aelin <aelin@postmarketos.org>"
 pkgname=linux-postmarketos-mainline
-pkgver=7.1_rc7
+pkgver=7.4_rc3
 pkgrel=0
 _rel=${pkgver#*_p}
 _kver=${pkgver%_p*}
@@ -21,12 +21,14 @@ options="
 	pmb:generic-kernel
 	pmb:kconfigcheck-community
 	pmb:kconfigcheck-immutable
+	pmb:kconfigcheck-lockdown
 	pmb:kconfigcheck-rust
 	pmb:kconfigcheck-selinux
 	pmb:kconfigcheck-uefi
 	pmb:kconfigcheck-virt
 "
 makedepends="
+	bash
 	bison
 	clang
 	clang-libclang
@@ -34,6 +36,7 @@ makedepends="
 	elfutils-dev
 	findutils
 	flex
+	grep
 	kmod
 	linux-headers
 	lld
@@ -60,19 +63,16 @@ source="
 	$pkgname-$pkgver.tar.gz::https://git.kernel.org/torvalds/t/linux-${pkgver/_/-}.tar.gz
 
 	0001-WIP-arch-powerpc-boot-Support-LLVM-1-in-wrapper-scri.patch
-	0002-WIP-arch-powerpc-boot-Use-z-notext-for-pseries-image.patch
-	0003-WIP-arch-powerpc-boot-Add-z-norelro.patch
+	0002-WIP-arch-powerpc-boot-Add-z-norelro.patch
 
 	config-mainline.aarch64
 	config-mainline.armv7
 	config-mainline.loongarch64
 	config-mainline.ppc64le
 	config-mainline.riscv64
-	config-mainline.x86
 	config-mainline.x86_64
 "
 builddir="$srcdir/linux-${pkgver/_/-}"
-_defconfig="defconfig"
 
 case "$CARCH" in
 	aarch64*) _carch="arm64" ;;
@@ -113,20 +113,18 @@ package() {
 
 	rm -f "$pkgdir"/usr/lib/modules/*/build "$pkgdir"/usr/lib/modules/*/source
 
-	install -D "$builddir"/include/config/kernel.release \
-		"$pkgdir"/usr/share/kernel/$_flavor/kernel.release
+	install -Dm644 "$builddir"/include/config/kernel.release \
+		"$pkgdir"/usr/share/kernel/"$_flavor"/kernel.release
 }
 
 sha512sums="
-8fb453678e4e395dd453fd84447d940e59171394a1f483a5bcf9f0d42703ad9f38310e03fda169faba3caa36176c754edd40226b05a97f82cceca5ca5154fb37  linux-postmarketos-mainline-7.1_rc7.tar.gz
+12551f560ed8dbc530126399717238f070175e5dbab356e8b68cf9379493a284c843192b3fc9d96decbc7bf411ee027aae2b30851605507655517c04bb97403f  linux-postmarketos-mainline-7.4_rc3.tar.gz
 1f11df2480e9f691573283597160b4c806e492cdca4825f3acb3afb70bde43abfab487bcde1f5553b431a702a0039479d041b0ce7859970e706b5a51d2ad8fb0  0001-WIP-arch-powerpc-boot-Support-LLVM-1-in-wrapper-scri.patch
-26521a9c9ea769534095dc4e306babadc8bcbaf03d7faa523c377e41ba0f742ecd0490fa27791d895f729c3ae8845297dca59b4db2475e7f078e689c447430bc  0002-WIP-arch-powerpc-boot-Use-z-notext-for-pseries-image.patch
-302c20c85559fc9b3b2420ed25be1bfbb76c87f2a470e4141c32e9542cf1f5c6b3b5a7847231a3eaa0f6bc0e5942d0c1599e807175dcf5e63469704c3d6adde3  0003-WIP-arch-powerpc-boot-Add-z-norelro.patch
-edf337d8072ae75367088e165a8d6ded6801c434a4f35b4259b8947ddafced130460d80870a9d69f4a05b3fa94975d2d790012946757fe6e2c96803b44e42fb1  config-mainline.aarch64
-a3639217ac342e084ce3d205266b5b54109d2f2901f95cf1a60f8a1934967bb969c809ce900ef49c8dd2af1791cf898fb45b8e8931a8ca099568cc94da418e7f  config-mainline.armv7
-17354143638f079236fd10dfa73e8c477c996eabe37106abd773ffcda980b7b0681571c38a7b32697276d6f52f290cc715fc85f497055486db464fa1c5c14dfc  config-mainline.loongarch64
-1ef34f893c7db2c4516408eaaf3bc1c04f8892bc91e9e6a373e785a8bf53e36280bee410a1d2863ece519665ac1493d840e4e6ed526b3d2d09e946970bbbf19a  config-mainline.ppc64le
-72a5205a04b687c98caa4564b8edd1f20265ac94e00f7be4573aa807e6dd4660279fd9e13c21ba38669ce6f7cb585521a311ec66e549d3e883924ad3dc0e31a8  config-mainline.riscv64
-bf83724c5b1626c201bff968a8b55cb3161f9a6e77acd51308f126525bf56e086daca1301a325962bd05bf4a1d7cae335a29da50aea531b1dcf7020b4677bb87  config-mainline.x86
-44b2110d45b0ac0e75efb1c3a2f708ea0e4b8c1297806e5b84e2e44d31d4e52447784ddde471ed84106a6c99155821acb742f6d5b7bfa30f57b2ebc6ee5c4440  config-mainline.x86_64
+302c20c85559fc9b3b2420ed25be1bfbb76c87f2a470e4141c32e9542cf1f5c6b3b5a7847231a3eaa0f6bc0e5942d0c1599e807175dcf5e63469704c3d6adde3  0002-WIP-arch-powerpc-boot-Add-z-norelro.patch
+36c11024ffd3e0f3cbe5144a99a8f3415a97a46a32ddc407ff5fb175bc92fab16de95dec7c6377647dd0440e77069e3e6d49c7524f43c4d73d232cb8c5e284d5  config-mainline.aarch64
+ddafb0eaf56e6d91708271ca4df7a0be31f0bcbce6288b3b7c4bc5346c119791de43cb472f44679487914fd4822d44e8642a27ba60b6fe8346e036a27ccf98d3  config-mainline.armv7
+5e1e92de7b42a0c432e81189b04feeb2c8072dc211197ac5cca7eb120a8cdeb00455c7e01da2773bc25cdf8891af1675d70b7c0eb7e2c6dd847682e5efa37201  config-mainline.loongarch64
+b16417bd79c70ad94c36dab7c5f82619ff1ac2ea1a2a4e17fd073fd48bf4b84e0bc09b003ec13407fdf1fb7a590769382717f5b8640a38505a7882b81a9927ef  config-mainline.ppc64le
+91ceefb98a6b6286fca0236962c931974f40260ce5e87d53140a4a511c67156faa245518633bc29b139ee866030fa2e2d4c03c54421a1199771fb6eab4216435  config-mainline.riscv64
+a1143ce73b4afa8de0e4f21119d797f8f0500ce6ec498a678c7be1ef5d70e191b23c8c9e704b930467b7b879273d1c83dfc25793b15f0e9c904f4c02b8fd6fe8  config-mainline.x86_64
 "

@@ -98,6 +98,9 @@ resize_root_partition() {
 unlock_root_partition() {
 	command -v cryptsetup >/dev/null || return
 	if cryptsetup isLuks "$PMOS_ROOT"; then
+		if [ -f "$cryptkey" ]; then
+			cryptsetup luksOpen "$PMOS_ROOT" root --key-file="$cryptkey"
+		fi
 		splash_hide
 		tried=0
 		until cryptsetup status root | grep -qwi active; do
@@ -126,7 +129,8 @@ resize_root_filesystem() {
 		f2fs)
 			echo "Resize 'f2fs' root filesystem ($partition)"
 			modprobe f2fs
-			resize.f2fs "$partition"
+			# resize.f2fs is interactive by default, -F makes it not interactive
+			resize.f2fs -F "$partition"
 			;;
 		btrfs)
 			# Resize happens below after mount

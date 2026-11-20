@@ -3,16 +3,16 @@
 if [ "$(id -u)" = 0 ]; then
 	set -x
 	apk add git openssh-keygen grep curl
-	wget "https://gitlab.postmarketos.org/postmarketOS/ci-common/-/raw/main/install_pmbootstrap.sh"
+	wget "https://gitlab.nura.eco/nura/ci-common/-/raw/main/install_pmbootstrap.sh"
 	sh ./install_pmbootstrap.sh
 	exec su "${TESTUSER:-pmos}" -c "sh -e $0 $*"
 fi
 
 git config --global --add safe.directory "$CI_PROJECT_DIR"
-git config --global user.name "postmarketOS CI"
+git config --global user.name "Nura CI"
 # The username for the bot associated with the access token
 # e.g. project_226_bot_bfa19b84bf7f559c8ff7438a01fd29b9
-git config --global user.email "$PMAPORTS_TOKEN_BOT@noreply.gitlab.postmarketos.org"
+git config --global user.email "$PMAPORTS_TOKEN_BOT@noreply.gitlab.nura.eco"
 
 # Configure SSH key for signing
 mkdir -p ~/.ssh
@@ -76,18 +76,22 @@ update_linux_next() {
 	# Update the checksums
 	pmbootstrap checksum linux-next
 
-	# Ensure it builds
-	pmbootstrap --details-to-stdout build linux-next
+	for arch in aarch64 armv7 loongarch64 ppc64le riscv64 x86_64; do
+		# Regenerate the configuration
+		pmbootstrap --details-to-stdout kconfig generate linux-next --arch $arch
+		# Ensure it builds
+		pmbootstrap --details-to-stdout build linux-next --arch $arch
+	done
 
 	# Commit
-	git add device/testing/linux-next/APKBUILD
+	git add device/testing/linux-next/
 	git commit -S -m "linux-next: upgrade to $latest"
 }
 
 # For testing
-#git remote add gitlab https://pmos-ci:"$PMAPORTS_PUSH_TOKEN"@gitlab.postmarketos.org/postmarketOS/pmaports-autoupdate-test.git
+#git remote add gitlab https://pmos-ci:"$PMAPORTS_PUSH_TOKEN"@gitlab.nura.eco/nura/pmaports-autoupdate-test.git
 
-git remote add gitlab https://pmos-ci:"$PMAPORTS_PUSH_TOKEN"@gitlab.postmarketos.org/postmarketOS/pmaports.git
+git remote add gitlab https://pmos-ci:"$PMAPORTS_PUSH_TOKEN"@gitlab.nura.eco/nura/pmaports.git
 git fetch gitlab
 git checkout --track gitlab/main
 

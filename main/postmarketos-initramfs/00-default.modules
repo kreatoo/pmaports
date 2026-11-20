@@ -9,11 +9,13 @@ ext4
 kernel/arch/*/crypto/
 kernel/crypto/
 libaes
+libcomposite
 loop
 nls_ascii
 nls_cp437
 nls_iso8859_1
 nls_utf8
+uas
 uinput
 usb_f_acm
 usb_f_ncm
